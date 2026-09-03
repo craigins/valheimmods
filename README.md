@@ -5,14 +5,19 @@ BepInEx + Jotunn mod project for Valheim.
 ## Layout
 
 - `src/CraiginsValheimMod/` - the mod itself.
-  - `Plugin.cs` - BepInEx plugin entry point (Harmony PatchAll on Awake).
-  - `Patches/` - Harmony patch stubs:
-    - `TerrainMaskPatches.cs` - Black Forest using the Mistlands height mask (less craggy).
-    - `AtmospherePatches.cs` - wisp light radius / Mistlands fog opacity.
-    - Both are placeholders - see the TODOs in each file for how to re-find the current
-      patch targets and port your existing implementations in.
+  - `Plugin.cs` - BepInEx plugin entry point. Binds two config toggles
+    (`SmoothMistlandsTerrain`, `RemoveMistlandsFog`) and runs `Harmony.PatchAll()`.
+  - `Patches/`:
+    - `TerrainMaskPatches.cs` - Mistlands terrain generation using the smoother base-height
+      algorithm instead of its own craggy mask. Ported from your old `ValheimNoMist` project
+      (found on H:) and verified against the current `assembly_valheim.dll` - method targets
+      match exactly, only the removed `DUtils` noise helper was swapped for `Mathf`.
+    - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). Also
+      ported from `ValheimNoMist`, also verified against the current assembly. **Wisp light
+      radius has no `TODO` stub filled in** - no source for it was found anywhere on H:, so
+      it still needs to be built (or found) from scratch.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
-    Not implemented; this is a bigger feature to tackle once the small tweaks are ported over.
+    Not implemented - a bigger feature to tackle separately.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
   `LocalPaths.props.example` if it's missing.
 - `tools/install-bepinex.ps1` - (re)installs BepInEx into a given Valheim folder.
@@ -26,8 +31,11 @@ dotnet build
 This does three things automatically, using the path from `LocalPaths.props`:
 1. References Valheim's game/Unity assemblies straight from your local install (no copies
    checked into this repo).
-2. Publicizes `Assembly-CSharp.dll` at build time (via `BepInEx.AssemblyPublicizer.MSBuild`) so
-   patches can reach private/internal game members.
+2. Publicizes `Assembly-CSharp.dll` **and** `assembly_valheim.dll` at build time (via
+   `BepInEx.AssemblyPublicizer.MSBuild`) so patches can reach private/internal game members.
+   Note: in Valheim, gameplay code (`WorldGenerator`, `Player`, `Mister`, etc.) actually lives
+   in `assembly_valheim.dll` - `Assembly-CSharp.dll` itself is nearly empty (~23KB). Patch
+   targets are almost always in `assembly_valheim`.
 3. Copies the built DLL + PDB into `<Valheim>/BepInEx/plugins/CraiginsValheimMod/` so it's ready
    to test on next launch.
 
@@ -41,8 +49,9 @@ BepInEx is installed - `winhttp.dll` in the game folder bootstraps it automatica
 ## Finding current patch targets
 
 Valheim's internals change between updates, so don't trust old notes/decompiles blindly.
-After a `dotnet build`, the publicized assembly is cached at
-`src/CraiginsValheimMod/obj/Debug/publicized/Assembly-CSharp.dll` - open that in
+After a `dotnet build`, the publicized assemblies are cached at
+`src/CraiginsValheimMod/obj/Debug/publicized/assembly_valheim.dll` (this is where most
+gameplay types live - see above) and `...publicized/Assembly-CSharp.dll` - open either in
 [ILSpy](https://github.com/icsharpcode/ILSpy) or [dnSpy](https://github.com/dnSpyEx/dnSpy) to
 browse current class/method names.
 

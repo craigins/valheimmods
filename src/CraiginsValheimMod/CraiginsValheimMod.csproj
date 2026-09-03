@@ -47,14 +47,22 @@
   </ItemGroup>
 
   <ItemGroup Condition="Exists('$(ValheimManagedDir)')">
-    <!-- Publicized so patches can reach private fields/methods on game types. -->
+    <!-- Publicized so patches can reach private fields/methods on game types.
+         Note: in Valheim, gameplay code (WorldGenerator, Player, ZDO, etc.) lives in
+         assembly_valheim.dll - Assembly-CSharp.dll itself is nearly empty. Both are
+         publicized here since either could hold a patch target. -->
     <Reference Include="Assembly-CSharp">
       <HintPath>$(ValheimManagedDir)\Assembly-CSharp.dll</HintPath>
       <Publicize>true</Publicize>
       <Private>false</Private>
     </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>$(ValheimManagedDir)\assembly_valheim.dll</HintPath>
+      <Publicize>true</Publicize>
+      <Private>false</Private>
+    </Reference>
     <!-- Every other game/Unity assembly, taken as-is from the install. -->
-    <Reference Include="$(ValheimManagedDir)\*.dll" Exclude="$(ValheimManagedDir)\Assembly-CSharp.dll">
+    <Reference Include="$(ValheimManagedDir)\*.dll" Exclude="$(ValheimManagedDir)\Assembly-CSharp.dll;$(ValheimManagedDir)\assembly_valheim.dll">
       <Private>false</Private>
     </Reference>
   </ItemGroup>
