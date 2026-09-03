@@ -11,10 +11,11 @@ namespace CraiginsValheimMod.Patches
     ///   - TeleportAll (Humanoid.IsTeleportable) - vanilla Valheim already allows this now.
     ///   - SpawnSystem.IsSpawnPointGood patch - only ever printed debug logging, no actual
     ///     gameplay effect; not worth carrying forward.
-    ///   - WaterVolume.OnTriggerEnter (EverythingFloats) and WearNTear.GetMinSupport
-    ///     (NoSupportRequired) - both were already fully commented out / short-circuited with
-    ///     `if (false && ...)` in the original, i.e. abandoned experiments, not working
-    ///     features.
+    ///   - WearNTear.GetMinSupport (NoSupportRequired) - already commented out in the original,
+    ///     an abandoned experiment, not a working feature.
+    /// EverythingFloats (the other commented-out one, WaterVolume.OnTriggerEnter) is handled
+    /// separately in BuoyancyPatches.cs - that one never worked, so it's a fresh implementation
+    /// rather than a port. See the comment there for why.
     /// All patch targets below were verified against the current assembly_valheim.dll before
     /// porting.
     /// </summary>

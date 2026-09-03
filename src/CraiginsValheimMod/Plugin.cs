@@ -22,6 +22,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> PlantAnywhere;
         public static ConfigEntry<bool> SimplifiedFoodTotals;
         public static ConfigEntry<bool> SleepAnyways;
+        public static ConfigEntry<bool> EverythingFloats;
 
         private readonly Harmony _harmony = new Harmony(ModGuid);
 
@@ -57,6 +58,9 @@ namespace CraiginsValheimMod
             SleepAnyways = Config.Bind(
                 "QualityOfLife", "SleepAnyways", true,
                 "Lets you sleep regardless of nearby enemies/exposure/fire/wetness, and skips to morning as soon as everyone's trying to sleep.");
+            EverythingFloats = Config.Bind(
+                "QualityOfLife", "EverythingFloats", true,
+                "Adds a Floating component to any dropped item that doesn't already have one (e.g. ore/metal, which vanilla deliberately sinks), so it floats instead of sinking.");
 
             _harmony.PatchAll();
             Logger.LogInfo($"{ModName} v{ModVersion} loaded");

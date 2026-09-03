@@ -21,9 +21,14 @@ BepInEx + Jotunn mod project for Valheim.
       was written, so its original purpose may already be obsolete).
     - `SleepPatches.cs` - sleep regardless of nearby enemies/exposure/fire/wetness, skip to
       morning once everyone's trying to sleep.
+    - `BuoyancyPatches.cs` - "everything floats" (ore/metal, etc.). Not a port - the old
+      version never actually worked (see the comment in that file for the three reasons why),
+      so this is a fresh implementation: a `Floating` component is added to any dropped item
+      that doesn't already have one, in a postfix on `ItemDrop.Awake` (same GameObject, after
+      its own Rigidbody/ZNetView are set up - no parent-walking or ownership hacks needed).
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
-      `SpawnSystem` patch that only ever did debug logging, and two patches that were already
-      commented out / dead in the original (`EverythingFloats`, `NoSupportRequired`).
+      `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
+      (`NoSupportRequired`), which was already commented out and dead in the original.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
