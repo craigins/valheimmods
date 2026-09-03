@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>CraiginsValheimMod</AssemblyName>
+    <RootNamespace>CraiginsValheimMod</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>Craigins Valheim Mod</Product>
+    <Authors>craigins</Authors>
+
+    <ValheimManagedDir>$(ValheimInstallDir)\valheim_Data\Managed</ValheimManagedDir>
+    <ValheimBepInExCoreDir>$(ValheimInstallDir)\BepInEx\core</ValheimBepInExCoreDir>
+    <ValheimPluginsDir>$(ValheimInstallDir)\BepInEx\plugins\CraiginsValheimMod</ValheimPluginsDir>
+
+    <!-- JotunnLib's package auto-imports its own internal reference list, built for a separate
+         publicizer tool of its own (it expects a valheim_Data/Managed/publicized_assemblies
+         folder we don't create, since we publicize Assembly-CSharp ourselves below). Those
+         extra references (google analytics, gui/lux/postprocessing render libs, etc.) are for
+         Jotunn's own internals, not anything our code calls, so silence the "could not
+         resolve" noise instead of fighting the two publicizer tools against each other. -->
+    <NoWarn>$(NoWarn);MSB3245</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets `dotnet build` compile a net462 target without Visual Studio's .NET Framework installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Rewrites private/internal members in the referenced game assembly to public at build time,
+         so Harmony patches and Jotunn can see everything without editing the game's DLL on disk. -->
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
+    <!-- Valheim modding library: custom items/pieces/recipes, RPC helpers, config sync, dialogs, etc. -->
+    <PackageReference Include="JotunnLib" Version="2.29.2" />
+  </ItemGroup>
+
+  <Target Name="EnsureValheimInstall" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(ValheimManagedDir)')">
+    <Error Text="Could not find a Valheim install at '$(ValheimInstallDir)'. Copy LocalPaths.props.example (repo root) to LocalPaths.props and set ValheimInstallDir to your game folder." />
+  </Target>
+
+  <ItemGroup Condition="Exists('$(ValheimBepInExCoreDir)')">
+    <Reference Include="BepInEx">
+      <HintPath>$(ValheimBepInExCoreDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(ValheimBepInExCoreDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(ValheimManagedDir)')">
+    <!-- Publicized so patches can reach private fields/methods on game types. -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ValheimManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Publicize>true</Publicize>
+      <Private>false</Private>
+    </Reference>
+    <!-- Every other game/Unity assembly, taken as-is from the install. -->
+    <Reference Include="$(ValheimManagedDir)\*.dll" Exclude="$(ValheimManagedDir)\Assembly-CSharp.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- After every build, drop the plugin straight into BepInEx/plugins so it's ready to test. -->
+  <Target Name="DeployToBepInEx" AfterTargets="Build" Condition="Exists('$(ValheimInstallDir)\BepInEx\plugins')">
+    <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ValheimPluginsDir)" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb" DestinationFolder="$(ValheimPluginsDir)" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+  </Target>
+
+</Project>

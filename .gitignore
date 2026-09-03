@@ -1,0 +1,16 @@
+## Build output
+bin/
+obj/
+*.user
+
+## Machine-specific paths (copy LocalPaths.props.example instead)
+LocalPaths.props
+
+## IDE
+.vs/
+.idea/
+*.suo
+
+## OS
+Thumbs.db
+.DS_Store

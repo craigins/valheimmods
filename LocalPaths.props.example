@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Copy this file to LocalPaths.props (same folder) and point ValheimInstallDir at
+    your own Valheim install. LocalPaths.props is gitignored because the path is
+    different on every machine.
+  -->
+  <PropertyGroup>
+    <ValheimInstallDir>C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimInstallDir>
+  </PropertyGroup>
+</Project>

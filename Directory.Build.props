@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)LocalPaths.props" Condition="Exists('$(MSBuildThisFileDirectory)LocalPaths.props')" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Falls back to an env var if no LocalPaths.props is present (e.g. on a CI machine). -->
+    <ValheimInstallDir Condition="'$(ValheimInstallDir)' == ''">$(VALHEIM_INSTALL)</ValheimInstallDir>
+  </PropertyGroup>
+</Project>
