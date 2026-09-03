@@ -15,6 +15,10 @@
   fields) still matches the current `assembly_valheim.dll` byte-for-byte in structure. Both
   are wired up to config toggles and should be ready to test.
 - Design notes (not code) for the Stargate portal idea in `Stargate/DESIGN_NOTES.md`.
+- `pregenerateworld` console command (`WorldGen/`) - force-generates the whole map instead of
+  lazy per-zone generation, for porting a fully-generated world (with the Mistlands terrain
+  patch already baked in) to your dedicated server. See the README's **World pregeneration**
+  section for how it works and its real time cost (plausibly hours on a full-size map).
 
 ## You need to do
 
@@ -53,6 +57,26 @@
 
 6. **Thunderstore/Nexus publishing**, whenever you're ready to share the mod - needs your own
    account and API key, so that's a "when you want it" step, not something to set up now.
+
+7. **Test `pregenerateworld` on a copy of your world before trusting it for real.** I verified
+   its API against the current game build and it drives the same mechanism vanilla uses for its
+   own background pregeneration, but I have no way to launch the game and watch it run myself.
+   Copy your world's `.db`/`.fwl` files somewhere safe, run the command against the copy, and
+   confirm it completes and the world looks right before doing it for real.
+
+8. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
+   your dedicated server's world.** I only installed BepInEx into the regular game client at
+   `E:\...\Valheim` - I don't know whether your dedicated server runs from a separate
+   install (Valheim's dedicated server is normally a different executable/App ID from the
+   regular client, `valheim_server.exe`, entirely separate from what I set up). Two ways to
+   run pregeneration:
+   - Install BepInEx + this mod directly on whatever runs the dedicated server, and run the
+     console command there against the live world, or
+   - Host the same world locally in a normal client session (this mod's already set up for
+     that), run `pregenerateworld` there, then copy the resulting world files over to the
+     server's save folder.
+   Tell me which world/install you actually want pregenerated and I can help wire up whichever
+   path makes sense.
 
 ## Note on your existing installs
 

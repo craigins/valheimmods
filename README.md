@@ -29,6 +29,7 @@ BepInEx + Jotunn mod project for Valheim.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.
+  - `WorldGen/` - `pregenerateworld` console command. See **World pregeneration** below.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
@@ -67,6 +68,45 @@ After a `dotnet build`, the publicized assemblies are cached at
 gameplay types live - see above) and `...publicized/Assembly-CSharp.dll` - open either in
 [ILSpy](https://github.com/icsharpcode/ILSpy) or [dnSpy](https://github.com/dnSpyEx/dnSpy) to
 browse current class/method names.
+
+## World pregeneration
+
+Console command `pregenerateworld` (server-only) force-generates every zone in the world up
+front, instead of leaving zones lazily generated as players explore. Useful before copying a
+world to a dedicated server.
+
+**Run it *after* enabling any terrain-affecting config (`SmoothMistlandsTerrain`, etc.), and
+*before* copying the world files.** Terrain height is computed once, at zone-generation time,
+and baked permanently into that zone's save data - it is never recomputed later. Pregenerating
+with the patch off (or generating the world some other way first) and then flipping the patch
+on afterward does nothing for already-generated zones.
+
+How it works: it drives `ZoneSystem.SpawnZone(id, SpawnMode.Ghost, ...)` across every zone
+inside the world's 10000m radius - the exact same call vanilla itself already makes
+continuously in the background near every player (`ZoneSystem.CreateGhostZones`) to
+pregenerate zones just out of view. Ghost mode generates a zone (terrain, vegetation,
+locations), marks it generated, then fully destroys everything it spawned - so this doesn't
+accumulate live objects any more than normal play does, just across the whole map instead of
+near players.
+
+**Expect this to take a long time - very plausibly hours on a full-size map.** The real
+bottleneck is `HeightmapBuilder`, the game's own terrain generator: it's a *single* background
+thread processing one zone's terrain at a time. That's an engine-level constraint this mod
+doesn't (and safely can't) work around. A default 10000m-radius world has on the order of
+70-80k zones inside its circular boundary.
+
+It's safe to interrupt: already-generated zones are skipped on the next run (progress is
+saved periodically as it goes - see `PregenSaveEveryNZones` config, default every 2000 zones -
+specifically so a crash or restart mid-run doesn't lose everything back to zero), and it does
+a final synchronous save when done. Progress logs to the BepInEx console/log every ~10s.
+Tune `ZonesPerTick` in config if needed, though it mostly won't change total runtime - it's
+still gated by the same single-threaded terrain builder either way.
+
+**Test this on a copy of your world first.** This mutates real save data at scale (tens of
+thousands of zones); I verified the API against the current game build and the mechanism
+matches vanilla's own, but I have not been able to run it myself (I can't launch/observe a
+live game session) - there's no substitute for you watching it complete once on a disposable
+copy before trusting it against a world you care about.
 
 ## Multiple Valheim installs on this machine
 
