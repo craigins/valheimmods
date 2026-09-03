@@ -5,17 +5,25 @@ BepInEx + Jotunn mod project for Valheim.
 ## Layout
 
 - `src/CraiginsValheimMod/` - the mod itself.
-  - `Plugin.cs` - BepInEx plugin entry point. Binds two config toggles
-    (`SmoothMistlandsTerrain`, `RemoveMistlandsFog`) and runs `Harmony.PatchAll()`.
-  - `Patches/`:
+  - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
+    `Harmony.PatchAll()`.
+  - `Patches/` - all ported from your old `ValheimNoMist` project (found on H:), with every
+    patch target re-verified against the current `assembly_valheim.dll` before porting:
     - `TerrainMaskPatches.cs` - Mistlands terrain generation using the smoother base-height
-      algorithm instead of its own craggy mask. Ported from your old `ValheimNoMist` project
-      (found on H:) and verified against the current `assembly_valheim.dll` - method targets
-      match exactly, only the removed `DUtils` noise helper was swapped for `Mathf`.
-    - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). Also
-      ported from `ValheimNoMist`, also verified against the current assembly. **Wisp light
-      radius has no `TODO` stub filled in** - no source for it was found anywhere on H:, so
-      it still needs to be built (or found) from scratch.
+      algorithm instead of its own craggy mask. Only the removed `DUtils` noise helper needed
+      swapping (for `Mathf`); everything else matched exactly.
+    - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). **Wisp
+      light radius has no implementation** - no source for it was found anywhere on H:, so it
+      still needs to be built (or found) from scratch.
+    - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events, no
+      rain damage on roofed builds, plant-anywhere, and an off-by-default food-total patch
+      (see the comment in that file - the game's `Player.Food` struct changed shape since this
+      was written, so its original purpose may already be obsolete).
+    - `SleepPatches.cs` - sleep regardless of nearby enemies/exposure/fire/wetness, skip to
+      morning once everyone's trying to sleep.
+    - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
+      `SpawnSystem` patch that only ever did debug logging, and two patches that were already
+      commented out / dead in the original (`EverythingFloats`, `NoSupportRequired`).
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
