@@ -18,8 +18,8 @@
   lazy per-zone generation, for porting a fully-generated world (with the Mistlands terrain
   patch already baked in) to your dedicated server. Generates centre-outward so once-per-world
   locations (the merchant, etc.) land near spawn rather than at a map edge. See the README's
-  **World pregeneration** section for how it works and its real time cost (plausibly hours on
-  a full-size map).
+  **World pregeneration** section for how it works and its real time cost (measured: 76,470
+  zones in 1h47m on a full-size map).
 - Published to GitHub: <https://github.com/craigins/valheimmods> (public, MIT), with the
   built plugin attached to each tagged [release](https://github.com/craigins/valheimmods/releases).
   Note there's no CI build - compiling needs a local Valheim install for the game assemblies,
@@ -62,11 +62,12 @@
    needs your own account and API key, plus a `manifest.json` and icon, so it's a "when you
    want it" step - say the word and I'll set the packaging up.
 
-6. **Test `pregenerateworld` on a copy of your world before trusting it for real.** I verified
-   its API against the current game build and it drives the same mechanism vanilla uses for its
-   own background pregeneration, but I have no way to launch the game and watch it run myself.
-   Copy your world's `.db`/`.fwl` files somewhere safe, run the command against the copy, and
-   confirm it completes and the world looks right before doing it for real.
+6. ~~**Test `pregenerateworld` on a copy of your world before trusting it for real.**~~ Done
+   2026-09-04: a full run completed cleanly, 76,470 zones in 1h47m, through the final save.
+   Still copy your world's `.db`/`.fwl` files somewhere safe before running it for real - the
+   generation it bakes in is one-way - and note the run above was on the pre-1.0 build, so the
+   real pregeneration still waits for the 1.0 patch (2026-09-09) and a re-verification of every
+   patch target against the new `assembly_valheim.dll`.
 
 7. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
    your dedicated server's world.** BepInEx was only installed into the regular game client -

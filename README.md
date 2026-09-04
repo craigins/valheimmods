@@ -162,11 +162,13 @@ The command also refuses to start if `ZoneSystem.LocationsGenerated` is still fa
 mid-`GenerateLocationsTimeSliced` would mean claiming unique locations from an incomplete
 candidate list.
 
-**Expect this to take a long time - very plausibly hours on a full-size map.** The real
-bottleneck is `HeightmapBuilder`, the game's own terrain generator: it's a *single* background
-thread processing one zone's terrain at a time. That's an engine-level constraint this mod
-doesn't (and safely can't) work around. A default 10000m-radius world has on the order of
-70-80k zones inside its circular boundary.
+**Measured: 76,470 zones in 1h47m** on a default 10000m-radius world - about 715 zones/min
+averaged over the run. Expect the rate to fall off as it goes; the first few minutes ran at
+roughly 1250 zones/min, and the likeliest cause of the slowdown is checkpoint saves getting
+more expensive as the world `.db` grows (raise `SaveEveryNZones` if you want to trade crash
+recovery for speed). The real bottleneck is `HeightmapBuilder`, the game's own terrain
+generator: it's a *single* background thread processing one zone's terrain at a time. That's
+an engine-level constraint this mod doesn't (and safely can't) work around.
 
 It's safe to interrupt: already-generated zones are skipped on the next run (progress is
 saved periodically as it goes - see `PregenSaveEveryNZones` config, default every 2000 zones -
@@ -176,11 +178,48 @@ including how far out from the origin the spiral has reached. Tune `ZonesPerTick
 needed, though it mostly won't change total runtime - it's still gated by the same
 single-threaded terrain builder either way.
 
-**Test this on a copy of your world first.** This mutates real save data at scale (tens of
-thousands of zones); I verified the API against the current game build and the mechanism
-matches vanilla's own, but I have not been able to run it myself (I can't launch/observe a
-live game session) - there's no substitute for you watching it complete once on a disposable
-copy before trusting it against a world you care about.
+### Clear the minimap cache afterwards
+
+**After a pregeneration run, delete the world's cached minimap textures** - otherwise the map
+shows the *old* terrain and won't match what you fly over. Quit the game and delete these
+three files (no extension, sitting next to nothing else that matters - they're regenerated
+caches, not save data):
+
+```
+<Steam>\userdata\<id>\892970\remote\worlds_local\<WorldName>_mapTexCache
+<Steam>\userdata\<id>\892970\remote\worlds_local\<WorldName>_heightTexCache
+<Steam>\userdata\<id>\892970\remote\worlds_local\<WorldName>_forestMaskTexCache
+```
+
+Why this is needed: `Minimap.GenerateWorldMap` renders the map pixel by pixel straight from
+`WorldGenerator.GetBiome`/`GetBiomeHeight` - it never reads a single generated zone. So the map
+is a picture of the *generator function*, while the world you walk on is *baked zone data*.
+That render is then cached to disk, and `Minimap.Update` calls `TryLoadMinimapTextureData()`
+first, only falling back to a fresh `GenerateWorldMap()` if the cache files are missing. A map
+rendered before `SmoothMistlandsTerrain` was active therefore sticks around forever, showing
+vanilla craggy Mistlands over terrain that was actually baked smooth. Deleting the cache is the
+only way to force the re-render - `Minimap.ForceRegen` exists in the assembly but nothing calls
+it, so there's no console command for it.
+
+Two related things that are *not* bugs, and that clearing the cache won't change:
+
+- The cache is keyed by **world name, not seed**. A previous world of the same name leaves its
+  map behind for the new one.
+- Terrain near villages, crypts and other locations won't match the map, because locations
+  flatten their own ground when placed while the map only ever shows raw generator height. A
+  fully pregenerated world has *every* location placed, so this shows up far more than in a
+  normally-explored world.
+- The minimap is rendered **client-side**, so this follows you onto the dedicated server: a
+  client without `SmoothMistlandsTerrain` active draws vanilla craggy Mistlands on its map even
+  though the server's terrain was baked smooth. If you want everyone's map to match the ground,
+  everyone needs the mod - the pregenerated world alone isn't enough.
+
+### Test this on a copy of your world first
+
+This has now been run end to end once (a full default-size world, pre-1.0 build, completing
+cleanly through the final save), but it mutates real save data at scale - tens of thousands of
+zones, irreversibly - so watch it complete on a disposable copy of any world you care about
+before pointing it at the real one.
 
 ## Multiple Valheim installs
 

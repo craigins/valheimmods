@@ -13,7 +13,7 @@ namespace CraiginsValheimMod.WorldGen
 
         public override string Help =>
             "Force-generates every not-yet-generated zone in the world, spiralling outward from " +
-            "the world origin (can take hours on a full-size map), and saves as it goes. Run this " +
+            "the world origin (measured ~1h45m for a full-size map), and saves as it goes. Run this " +
             "BEFORE copying a world to a " +
             "dedicated server, and after enabling any terrain patches (e.g. SmoothMistlandsTerrain) " +
             "you want baked into the result - terrain height is fixed at generation time.";
