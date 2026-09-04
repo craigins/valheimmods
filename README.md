@@ -82,6 +82,38 @@ This does three things automatically, using the path from `LocalPaths.props`:
 3. Copies the built DLL + PDB into `<Valheim>/BepInEx/plugins/CraiginsValheimMod/` so it's ready
    to test on next launch.
 
+## Releasing
+
+Bump the version in three places - `Plugin.ModVersion`, the csproj `<Version>`, and the log
+line quoted in `SETUP.md` - then tag and push:
+
+```
+git tag -a v0.5.0 -m "..."
+git push origin main --follow-tags
+```
+
+`.github/workflows/release.yml` builds Release on a runner and attaches
+`CraiginsValheimMod.dll` to the release. If a release for that tag already exists it just
+replaces the DLL, so hand-written notes are never overwritten; if not, it opens a **draft** to
+write notes into. Nothing is ever published automatically. A tag whose version doesn't match
+the built assembly fails the build rather than shipping a mislabelled DLL.
+
+The runner has no Valheim install, so it takes its references from the **Valheim Dedicated
+Server** (Steam app `896660`), which steamcmd can fetch anonymously and which ships the same
+`assembly_valheim.dll` the client does - just under `valheim_server_Data`. That's why
+`ValheimManagedDir` and `ValheimBepInExCoreDir` are overridable in the csproj. BepInEx core
+comes from the same Thunderstore package `tools/install-bepinex.ps1` uses, so keep
+`BEPINEX_VERSION` in the workflow in step with the `-Version` default in that script.
+
+The game download is deliberately **not** cached. A stale cache would silently build against
+the previous game version, which is exactly the failure that matters here - after a Valheim
+update every patch target has to be re-verified against the new assembly, and a release built
+on yesterday's assemblies would be worse than a slow build. A full run is under two minutes.
+
+The workflow can also be run by hand (Actions -> Build and release -> Run workflow) to check
+the build against the current live game version without cutting a release; on that path it
+builds and uploads a run artifact, and skips everything release-related.
+
 ## Testing
 
 Launch `valheim.exe` directly (not Steam's "play" button first time, though that works too once
