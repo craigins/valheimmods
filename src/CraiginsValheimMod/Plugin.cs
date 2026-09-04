@@ -27,6 +27,8 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> NoFoodDecay;
         public static ConfigEntry<bool> SleepAnyways;
         public static ConfigEntry<bool> EverythingFloats;
+        public static ConfigEntry<bool> UnlimitedBreeding;
+        public static ConfigEntry<bool> SeedsFromStumps;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -74,6 +76,19 @@ namespace CraiginsValheimMod
             EverythingFloats = Config.Bind(
                 "QualityOfLife", "EverythingFloats", true,
                 "Adds a Floating component to any dropped item that doesn't already have one (e.g. ore/metal, which vanilla deliberately sinks), so it floats instead of sinking.");
+            UnlimitedBreeding = Config.Bind(
+                "QualityOfLife", "UnlimitedBreeding", true,
+                "Removes the nearby-population cap on tamed animal breeding (Procreation.m_maxCreatures, " +
+                "counted within m_totalCheckRange), so a full pen keeps producing instead of quietly " +
+                "stopping. Animals still have to be fed and still need a partner nearby - only the " +
+                "crowding limit is lifted, so watch your pen sizes and your framerate.");
+            SeedsFromStumps = Config.Bind(
+                "QualityOfLife", "SeedsFromStumps", true,
+                "Moves tree seeds onto stumps: felling a tree drops no seeds, and destroying the stump it " +
+                "leaves always drops one. Forestry stays sustainable but you have to clear the stumps, " +
+                "which also tidies the ground for replanting. Wood amounts and stack sizes are untouched, " +
+                "and each stump only ever drops a seed its own species already dropped - a species whose " +
+                "stump can't be resolved keeps dropping seeds from the tree exactly as vanilla does.");
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,

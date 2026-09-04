@@ -7,8 +7,9 @@ BepInEx + Jotunn mod project for Valheim.
 - `src/CraiginsValheimMod/` - the mod itself.
   - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
     `Harmony.PatchAll()`.
-  - `Patches/` - all ported from an older `ValheimNoMist` project of mine, with every
-    patch target re-verified against the current `assembly_valheim.dll` before porting:
+  - `Patches/` - mostly ported from an older `ValheimNoMist` project of mine (the exceptions
+    are called out below), with every patch target verified against the current
+    `assembly_valheim.dll`:
     - `TerrainMaskPatches.cs` - Mistlands terrain generation using the smoother base-height
       algorithm instead of its own craggy mask. Only the removed `DUtils` noise helper needed
       swapping (for `Mathf`); everything else matched exactly.
@@ -33,6 +34,26 @@ BepInEx + Jotunn mod project for Valheim.
       of extra iterations can help those. Off by default; **a dungeon's layout is baked into
       the world permanently when its zone first generates**, so this has to be set before the
       zone exists, and matters most before a `pregenerateworld` run.
+    - `BreedingPatches.cs` - `UnlimitedBreeding`. Not a port - new. Lifts the nearby-population
+      cap on tamed animals: `Procreation.Procreate` counts instances of its own prefab plus its
+      offspring prefab within `m_totalCheckRange` and gives up once that reaches
+      `m_maxCreatures`, which is why a full pen quietly stops producing. The cap is raised for
+      the duration of the call and restored in a finalizer, so toggling the config off takes
+      effect immediately, on already-spawned animals too. Feeding and the partner check are
+      deliberately left vanilla.
+    - `ForestryPatches.cs` - `SeedsFromStumps`. Not a port - new. Moves tree seeds off the tree
+      and onto its stump: felling drops no seeds, destroying the stump always drops one, so
+      sustainable forestry means clearing your stumps. All four drop paths (`TreeBase`,
+      `TreeLog`, and the stump's `DropOnDestroyed`) funnel through `DropTable.GetDropList`, so
+      one postfix there does the work and the patches on the callers just record which table is
+      mid-roll. The seed is *added* rather than rolled - `GetDropList(int)` returns an empty
+      list outright when `Random.value` beats `m_dropChance` - while wood amounts, stack sizes
+      and `Game.m_resourceRate` scaling stay untouched. Nothing is hardcoded to prefab names:
+      seeds are whatever the game's own sapling pieces are planted from (any prefab with a
+      `Plant` component, via its `Piece.m_resources`), and each stump is matched to its species
+      through `TreeBase.m_stubPrefab`, the same field `SpawnLog` instantiates. A species whose
+      stump can't be resolved keeps dropping seeds from the tree, so a seed is never removed
+      from the game without being put back somewhere.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.
