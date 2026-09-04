@@ -148,9 +148,6 @@ namespace CraiginsValheimMod.WorldGen
             if (claims.Count > 0)
             {
                 ctx.BeginPass("unique locations", claims.Count);
-                Jotunn.Logger.LogInfo(
-                    $"pregenerateworld: claiming {claims.Count} unique location(s) at their nearest-to-origin " +
-                    "candidate zone before starting the bulk pass.");
                 yield return GeneratePass(ctx, claims, blocked);
             }
 
@@ -345,19 +342,30 @@ namespace CraiginsValheimMod.WorldGen
                 }
             }
 
-            var claims = new List<SpiralEntry>(nearest.Values);
-            claims.Sort(SpiralComparison);
-
-            var ordered = new List<Vector2i>(claims.Count);
+            // Sorted before logging as well as before generating: a Dictionary enumerates in
+            // whatever order it likes, and a claim list that reads out of order looks like the
+            // ordering is broken even when it isn't.
+            var claims = new List<KeyValuePair<string, SpiralEntry>>(nearest.Count);
             foreach (KeyValuePair<ZoneSystem.ZoneLocation, SpiralEntry> pair in nearest)
             {
-                Jotunn.Logger.LogInfo(
-                    $"pregenerateworld: unique location '{pair.Key.m_prefabName}' will be claimed at zone " +
-                    $"({pair.Value.Id.x}, {pair.Value.Id.y}), {ZoneSystem.GetZonePos(pair.Value.Id).magnitude:0}m from the origin.");
+                claims.Add(new KeyValuePair<string, SpiralEntry>(pair.Key.m_prefabName, pair.Value));
             }
-            foreach (SpiralEntry entry in claims)
+            claims.Sort((a, b) => SpiralComparison(a.Value, b.Value));
+
+            if (claims.Count > 0)
             {
-                ordered.Add(entry.Id);
+                Jotunn.Logger.LogInfo(
+                    $"pregenerateworld: claiming {claims.Count} unique location(s) at their nearest-to-origin " +
+                    "candidate zone, before the bulk pass, in this order:");
+            }
+
+            var ordered = new List<Vector2i>(claims.Count);
+            foreach (KeyValuePair<string, SpiralEntry> claim in claims)
+            {
+                Jotunn.Logger.LogInfo(
+                    $"pregenerateworld:   '{claim.Key}' at zone ({claim.Value.Id.x}, {claim.Value.Id.y}), " +
+                    $"{ZoneSystem.GetZonePos(claim.Value.Id).magnitude:0}m from the origin.");
+                ordered.Add(claim.Value.Id);
             }
             return ordered;
         }
