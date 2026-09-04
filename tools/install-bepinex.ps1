@@ -3,7 +3,7 @@
   Installs or updates BepInExPack_Valheim into a Valheim game folder.
 
 .EXAMPLE
-  ./tools/install-bepinex.ps1 -ValheimPath "E:\Programs\Steam\steamapps\common\Valheim"
+  ./tools/install-bepinex.ps1 -ValheimPath "C:\Program Files (x86)\Steam\steamapps\common\Valheim"
 #>
 param(
     [Parameter(Mandatory = $true)]

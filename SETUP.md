@@ -1,11 +1,11 @@
 # What's done vs. what needs you
 
 ## Done
-- BepInEx 5.4.2333 (`denikson-BepInExPack_Valheim`) installed into
-  `E:\Programs\Steam\steamapps\common\Valheim` (the vanilla install you pointed me at).
-- Project scaffolded at `F:\valheimmod`: BepInEx plugin + Jotunn library, referencing your
-  local game install and auto-publicizing `Assembly-CSharp.dll` at build time (no game files
-  copied into the repo).
+- BepInEx 5.4.2333 (`denikson-BepInExPack_Valheim`) installed into the vanilla game install
+  named by `ValheimInstallDir` in `LocalPaths.props`.
+- Project scaffolded: BepInEx plugin + Jotunn library, referencing that local game install
+  and auto-publicizing `Assembly-CSharp.dll` at build time (no game files copied into the
+  repo).
 - `dotnet build` succeeds cleanly and deploys the built plugin to
   `BepInEx/plugins/CraiginsValheimMod/` automatically.
 - Found the old ValheimNoMist mod source archived on another drive and ported the two working
@@ -22,9 +22,8 @@
 ## You need to do
 
 1. **Verify the game actually launches modded, and that the two patches behave.** I can't
-   launch/observe a GUI game session myself. Start `valheim.exe` in
-   `E:\Programs\Steam\steamapps\common\Valheim` directly (Steam's play button works too now
-   that BepInEx is installed) and confirm:
+   launch/observe a GUI game session myself. Start `valheim.exe` from your game install
+   directly (Steam's play button works too now that BepInEx is installed) and confirm:
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
    - The log shows `Craigins Valheim Mod v0.1.0 loaded` and Jotunn initializing.
@@ -64,9 +63,9 @@
    confirm it completes and the world looks right before doing it for real.
 
 8. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
-   your dedicated server's world.** I only installed BepInEx into the regular game client at
-   `E:\...\Valheim` - I don't know whether your dedicated server runs from a separate
-   install (Valheim's dedicated server is normally a different executable/App ID from the
+   your dedicated server's world.** BepInEx was only installed into the regular game client -
+   not into any dedicated server install (Valheim's dedicated server is normally a different
+   executable/App ID from the
    regular client, `valheim_server.exe`, entirely separate from what I set up). Two ways to
    run pregeneration:
    - Install BepInEx + this mod directly on whatever runs the dedicated server, and run the
