@@ -38,13 +38,23 @@ jobs:
           Invoke-WebRequest -Uri 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip' -OutFile steamcmd.zip
           Expand-Archive steamcmd.zip -DestinationPath steamcmd -Force
 
-          # First run bootstraps/self-updates and can exit non-zero while still succeeding,
-          # so the install is verified by looking for the assemblies rather than by exit code.
-          & .\steamcmd\steamcmd.exe +force_install_dir "$PWD\valheim-server" +login anonymous `
-              +app_update $env:VALHEIM_SERVER_APPID validate +quit
-          $exit = $LASTEXITCODE
+          # steamcmd's first run self-updates and exits 7 *without* processing the rest of its
+          # command line, so it has to be warmed up before the real invocation.
+          & .\steamcmd\steamcmd.exe +quit
+          Write-Host "steamcmd bootstrap exit code: $LASTEXITCODE"
 
           $managed = Join-Path $PWD 'valheim-server\valheim_server_Data\Managed'
+          $exit = $null
+          foreach ($attempt in 1..3) {
+            & .\steamcmd\steamcmd.exe +force_install_dir "$PWD\valheim-server" +login anonymous `
+                +app_update $env:VALHEIM_SERVER_APPID validate +quit
+            $exit = $LASTEXITCODE
+            if (Test-Path (Join-Path $managed 'assembly_valheim.dll')) { break }
+            Write-Host "Attempt ${attempt}: steamcmd exited $exit with no assemblies yet."
+          }
+
+          # Verified by looking for the assemblies rather than by exit code - steamcmd exits
+          # non-zero in plenty of situations where the download actually succeeded.
           if (-not (Test-Path (Join-Path $managed 'assembly_valheim.dll'))) {
             throw "steamcmd finished with exit code $exit and no assembly_valheim.dll under $managed"
           }
