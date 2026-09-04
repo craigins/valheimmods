@@ -28,6 +28,9 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> SleepAnyways;
         public static ConfigEntry<bool> EverythingFloats;
 
+        public static ConfigEntry<int> MinDungeonRooms;
+        public static ConfigEntry<int> MaxDungeonRerolls;
+
         public static ConfigEntry<int> PregenZonesPerTick;
         public static ConfigEntry<int> PregenSaveEveryNZones;
         public static ConfigEntry<int> PregenTerrainLookahead;
@@ -71,6 +74,19 @@ namespace CraiginsValheimMod
             EverythingFloats = Config.Bind(
                 "QualityOfLife", "EverythingFloats", true,
                 "Adds a Floating component to any dropped item that doesn't already have one (e.g. ore/metal, which vanilla deliberately sinks), so it floats instead of sinking.");
+
+            MinDungeonRooms = Config.Bind(
+                "Dungeons", "MinDungeonRooms", 0,
+                "Minimum rooms a generated dungeon must have. 0 = off (vanilla). Raises the prefab's own " +
+                "room floor, and rerolls the layout with a different seed if it still comes up short, so you " +
+                "stop finding two-room dead ends. IMPORTANT: a dungeon's layout is baked into the world " +
+                "permanently when its zone first generates - this only affects dungeons generated while it's " +
+                "on, and can't be applied retroactively. Set it before running 'pregenerateworld'.");
+            MaxDungeonRerolls = Config.Bind(
+                "Dungeons", "MaxDungeonRerolls", 8,
+                "How many extra layouts to try when a dungeon comes up under MinDungeonRooms. The roomiest " +
+                "attempt wins. Each reroll is a full rebuild of that dungeon, so high values cost real time " +
+                "during 'pregenerateworld'. Ignored when MinDungeonRooms is 0.");
 
             PregenZonesPerTick = Config.Bind(
                 "WorldPregeneration", "ZonesPerTick", 64,

@@ -26,6 +26,13 @@ BepInEx + Jotunn mod project for Valheim.
       so this is a fresh implementation: a `Floating` component is added to any dropped item
       that doesn't already have one, in a postfix on `ItemDrop.Awake` (same GameObject, after
       its own Rigidbody/ZNetView are set up - no parent-walking or ownership hacks needed).
+    - `DungeonPatches.cs` - `MinDungeonRooms`, so you stop finding two-room dead ends. Raises
+      the prefab's own room floor (and its iteration budget, which is what `m_maxRooms`
+      actually is), and rerolls the layout with a derived seed when a dungeon still comes up
+      short - some layouts close off all their connections after a room or two and no amount
+      of extra iterations can help those. Off by default; **a dungeon's layout is baked into
+      the world permanently when its zone first generates**, so this has to be set before the
+      zone exists, and matters most before a `pregenerateworld` run.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.
