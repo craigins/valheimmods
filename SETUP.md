@@ -8,9 +8,8 @@
   copied into the repo).
 - `dotnet build` succeeds cleanly and deploys the built plugin to
   `BepInEx/plugins/CraiginsValheimMod/` automatically.
-- Found your old mod source on the H: drive
-  (`H:\Users\craig_000\source\repos\ValheimNoMist`) and ported the two working patches from
-  it - Mistlands terrain smoothing and mist removal - into `Patches/TerrainMaskPatches.cs` and
+- Found the old ValheimNoMist mod source archived on another drive and ported the two working
+  patches from it - Mistlands terrain smoothing and mist removal - into `Patches/TerrainMaskPatches.cs` and
   `Patches/AtmospherePatches.cs`, after verifying every patch target (method signatures,
   fields) still matches the current `assembly_valheim.dll` byte-for-byte in structure. Both
   are wired up to config toggles and should be ready to test.
@@ -35,7 +34,7 @@
      last ran this code - the `DUtils` noise helper the old code relied on is gone (see
      `TerrainMaskPatches.cs` for what I substituted), so it's worth a visual check.
 
-2. **Wisp light radius** - I searched your whole H: drive (source repos, the decompiled
+2. **Wisp light radius** - I searched the whole archive drive (source repos, the decompiled
    reference project, and every built plugin DLL) and found no trace of this ever being
    built - only the mist/terrain patches and an unrelated "Death Recorder" mod. Either it
    wasn't saved separately, or it's somewhere I didn't think to look. Point me at it if you

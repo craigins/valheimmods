@@ -5,8 +5,7 @@ using UnityEngine;
 namespace CraiginsValheimMod.Patches
 {
     /// <summary>
-    /// Ported from your older ValheimNoMist mod
-    /// (H:\Users\craig_000\source\repos\ValheimNoMist\ValheimNoMist\ValheimNoMistMain.cs).
+    /// Ported from my older ValheimNoMist mod (ValheimNoMistMain.cs).
     /// Skipped from that file (not ported):
     ///   - TeleportAll (Humanoid.IsTeleportable) - vanilla Valheim already allows this now.
     ///   - SpawnSystem.IsSpawnPointGood patch - only ever printed debug logging, no actual

@@ -6,8 +6,7 @@ using UnityEngine;
 namespace CraiginsValheimMod.Patches
 {
     /// <summary>
-    /// Ported from an older working mod of yours (found at
-    /// H:\Users\craig_000\source\repos\ValheimNoMist\ValheimNoMist\ValheimNoMistMain.cs,
+    /// Ported from an older working ValheimNoMist mod of mine (ValheimNoMistMain.cs,
     /// class WorldGeneratorGetMistlandsHeight_Patch). Verified against the current game's
     /// assembly_valheim.dll (2026-02-19 build) - WorldGenerator.GetMistlandsHeight,
     /// GetBaseHeight, AddRivers and the m_offset3 field all still match exactly.

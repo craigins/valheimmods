@@ -4,9 +4,9 @@ using UnityEngine;
 namespace CraiginsValheimMod.Patches
 {
     /// <summary>
-    /// "Everything floats" - redesigned from scratch, not ported. Your old ValheimNoMist
-    /// attempt (H:\Users\craig_000\source\repos\ValheimNoMist\ValheimNoMist\ValheimNoMistMain.cs,
-    /// the commented-out WaterVolumeOnTriggerEnter_Patch/EverythingFloats toggle) never worked
+    /// "Everything floats" - redesigned from scratch, not ported. My old ValheimNoMist
+    /// attempt (ValheimNoMistMain.cs, the commented-out
+    /// WaterVolumeOnTriggerEnter_Patch/EverythingFloats toggle) never worked
     /// because of how it was built, not because the idea was wrong:
     ///
     ///   1. Whether an item floats is baked into its prefab (does it have a Floating component

@@ -4,9 +4,8 @@ using HarmonyLib;
 namespace CraiginsValheimMod.Patches
 {
     /// <summary>
-    /// "Sleep anywhere/anytime" cluster, ported from your older ValheimNoMist mod
-    /// (H:\Users\craig_000\source\repos\ValheimNoMist\ValheimNoMist\ValheimNoMistMain.cs).
-    /// All patch targets verified against the current assembly_valheim.dll before porting -
+    /// "Sleep anywhere/anytime" cluster, ported from my older ValheimNoMist mod
+    /// (ValheimNoMistMain.cs). All patch targets verified against the current assembly_valheim.dll before porting -
     /// no changes needed, ported as-is.
     /// </summary>
     internal static class SleepPatches
