@@ -16,8 +16,14 @@
 - Design notes (not code) for the Stargate portal idea in `Stargate/DESIGN_NOTES.md`.
 - `pregenerateworld` console command (`WorldGen/`) - force-generates the whole map instead of
   lazy per-zone generation, for porting a fully-generated world (with the Mistlands terrain
-  patch already baked in) to your dedicated server. See the README's **World pregeneration**
-  section for how it works and its real time cost (plausibly hours on a full-size map).
+  patch already baked in) to your dedicated server. Generates centre-outward so once-per-world
+  locations (the merchant, etc.) land near spawn rather than at a map edge. See the README's
+  **World pregeneration** section for how it works and its real time cost (plausibly hours on
+  a full-size map).
+- Published to GitHub: <https://github.com/craigins/valheimmods> (public, MIT), with the
+  built plugin attached to the [v0.1.0 release](https://github.com/craigins/valheimmods/releases/tag/v0.1.0).
+  Note there's no CI build - compiling needs a local Valheim install for the game assemblies,
+  which can't live on a hosted runner, so releases are built locally and uploaded.
 
 ## You need to do
 
@@ -50,19 +56,19 @@
    UI). `Stargate/DESIGN_NOTES.md` has a starting architecture sketch, deliberately not code -
    say the word when you want to start building it and we can go class by class.
 
-5. **Git remote / backups**, if you want them - I initialized a local git repo only
-   (see below); pushing anywhere is up to you.
+5. **Thunderstore/Nexus publishing**, whenever you're ready to share the mod more widely.
+   GitHub Releases already covers "here's a DLL you can download"; Thunderstore is what gets
+   you into mod managers (r2modman/Thunderstore app) and its own dependency resolution. It
+   needs your own account and API key, plus a `manifest.json` and icon, so it's a "when you
+   want it" step - say the word and I'll set the packaging up.
 
-6. **Thunderstore/Nexus publishing**, whenever you're ready to share the mod - needs your own
-   account and API key, so that's a "when you want it" step, not something to set up now.
-
-7. **Test `pregenerateworld` on a copy of your world before trusting it for real.** I verified
+6. **Test `pregenerateworld` on a copy of your world before trusting it for real.** I verified
    its API against the current game build and it drives the same mechanism vanilla uses for its
    own background pregeneration, but I have no way to launch the game and watch it run myself.
    Copy your world's `.db`/`.fwl` files somewhere safe, run the command against the copy, and
    confirm it completes and the world looks right before doing it for real.
 
-8. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
+7. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
    your dedicated server's world.** BepInEx was only installed into the regular game client -
    not into any dedicated server install (Valheim's dedicated server is normally a different
    executable/App ID from the
