@@ -16,9 +16,9 @@ BepInEx + Jotunn mod project for Valheim.
       light radius has no implementation** - no source for it was found in the archive, so it
       still needs to be built (or found) from scratch.
     - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events, no
-      rain damage on roofed builds, plant-anywhere, and an off-by-default food-total patch
-      (see the comment in that file - the game's `Player.Food` struct changed shape since this
-      was written, so its original purpose may already be obsolete).
+      rain damage on roofed builds, plant-anywhere, and `NoFoodDecay` - food holds its full
+      benefit for its whole duration instead of vanilla's steady decline (it still expires on
+      schedule, the benefit just drops off in one step at the end).
     - `SleepPatches.cs` - sleep regardless of nearby enemies/exposure/fire/wetness, skip to
       morning once everyone's trying to sleep.
     - `BuoyancyPatches.cs` - "everything floats" (ore/metal, etc.). Not a port - the old

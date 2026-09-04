@@ -12,7 +12,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.1.0";
+        public const string ModVersion = "0.2.0";
 
         public static Plugin Instance { get; private set; }
 
@@ -24,7 +24,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> DisableRandomEvents;
         public static ConfigEntry<bool> NoRainDamage;
         public static ConfigEntry<bool> PlantAnywhere;
-        public static ConfigEntry<bool> SimplifiedFoodTotals;
+        public static ConfigEntry<bool> NoFoodDecay;
         public static ConfigEntry<bool> SleepAnyways;
         public static ConfigEntry<bool> EverythingFloats;
 
@@ -60,11 +60,11 @@ namespace CraiginsValheimMod
             PlantAnywhere = Config.Bind(
                 "QualityOfLife", "PlantAnywhere", true,
                 "Removes the growth-space/roof/proximity checks on planted crops.");
-            SimplifiedFoodTotals = Config.Bind(
-                "QualityOfLife", "SimplifiedFoodTotals", false,
-                "Recomputes HP/stamina/eitr as a straight sum of active foods' base values, bypassing whatever " +
-                "the current game version does differently (freshness/decay, etc.). Off by default - see the " +
-                "comment in QualityOfLifePatches.cs before enabling.");
+            NoFoodDecay = Config.Bind(
+                "QualityOfLife", "NoFoodDecay", true,
+                "Keeps food at its full HP/stamina/eitr benefit for its whole duration instead of vanilla's " +
+                "steady decline, so a meal is worth the same in its last minute as its first. Food still " +
+                "expires on schedule - the benefit just drops off in one step at the end rather than fading.");
             SleepAnyways = Config.Bind(
                 "QualityOfLife", "SleepAnyways", true,
                 "Lets you sleep regardless of nearby enemies/exposure/fire/wetness, and skips to morning as soon as everyone's trying to sleep.");
