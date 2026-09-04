@@ -30,6 +30,7 @@ namespace CraiginsValheimMod
 
         public static ConfigEntry<int> PregenZonesPerTick;
         public static ConfigEntry<int> PregenSaveEveryNZones;
+        public static ConfigEntry<int> PregenTerrainLookahead;
 
         private readonly Harmony _harmony = new Harmony(ModGuid);
 
@@ -78,6 +79,12 @@ namespace CraiginsValheimMod
             PregenSaveEveryNZones = Config.Bind(
                 "WorldPregeneration", "SaveEveryNZones", 2000,
                 "How often 'pregenerateworld' checkpoint-saves progress, so a server restart mid-run doesn't lose it.");
+            PregenTerrainLookahead = Config.Bind(
+                "WorldPregeneration", "TerrainLookahead", 8,
+                "How many zones ahead of the spiral 'pregenerateworld' pre-requests terrain for, to keep the " +
+                "game's single background terrain-build thread busy without ever generating a zone out of order. " +
+                "Clamped to 0-12: the game's finished-terrain queue only holds 16 entries before it starts " +
+                "discarding the oldest, and going past that just makes it rebuild the same terrain twice.");
 
             CommandManager.Instance.AddConsoleCommand(new PregenerateWorldCommand());
 

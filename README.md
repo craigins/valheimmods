@@ -29,7 +29,8 @@ BepInEx + Jotunn mod project for Valheim.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.
-  - `WorldGen/` - `pregenerateworld` console command. See **World pregeneration** below.
+  - `WorldGen/` - `pregenerateworld` console command, plus the ghost-zone suppression patch it
+    relies on. See **World pregeneration** below.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
@@ -89,6 +90,71 @@ locations), marks it generated, then fully destroys everything it spawned - so t
 accumulate live objects any more than normal play does, just across the whole map instead of
 near players.
 
+### Generation order: unique locations first, then a strict spiral out from the origin
+
+**Why order matters.** A `ZoneLocation` flagged `m_unique` - Haldor's merchant camp being the
+obvious one - gets *many* candidate instances seeded across the map at world-gen time, and the
+first one to actually generate wins. `ZoneSystem.PlaceLocations` ends with:
+
+```csharp
+if (loc.m_location.m_unique) RemoveUnplacedLocations(loc.m_location);
+```
+
+and `RemoveUnplacedLocations` deletes every other unplaced instance of that same location from
+`m_locationInstances`. So whichever zone generates first decides, permanently, where the single
+merchant in this world lives. Generating from a map corner would strand it at the far edge.
+(Boss altars and similar aren't affected - those are numerous and fixed by seed, not
+first-come-first-served.)
+
+Three things protect the ordering:
+
+**1. A claim pass runs first.** Before the bulk work, it walks `m_locationInstances`, finds the
+nearest-to-origin ungenerated candidate zone for each unclaimed unique location, and generates
+just those - a handful of zones, done in the first seconds of the run. That settles every
+once-per-world claim at the closest possible spot instead of leaving it to be won hours later
+somewhere out in the spiral. Only the nearest candidate per location is needed: generating it
+triggers `RemoveUnplacedLocations`, which clears the rest, and those zones then rejoin the
+spiral as ordinary zones. Different unique locations never compete with each other, since
+`RemoveUnplacedLocations` is per-`ZoneLocation`. Each claim is logged with its location name,
+zone, and distance from spawn.
+
+**2. Everything else generates in a strict spiral** outward from the origin (nearest zone centre
+first, ties broken by angle) - never raster order from a corner. This covers anything else
+order-dependent, including mod-added generation, and means an interrupted run leaves a
+contiguous generated disc around spawn instead of a partial band along one edge.
+
+"Strict" is load-bearing. `SpawnZone` returns false when the zone's terrain isn't built yet, so
+the obvious approach - retry that zone later, move on to the next one meanwhile - lets later
+zones overtake earlier ones and quietly destroys the ordering (that's what the first version of
+this did). Instead the cursor parks on the head of the spiral until that exact zone spawns. To
+stop that from serialising into a crawl, terrain for the next `TerrainLookahead` zones (default
+8) is pre-requested *in spiral order* via `HeightmapBuilder.IsTerrainReady`, which queues the
+build as a side effect - the same request `SpawnZone` itself makes, just pulled forward. The
+build thread stays saturated; nothing generates out of order. The lookahead is clamped to 0-12
+because the game trims its finished-terrain queue back to 16 entries, discarding the oldest.
+
+**3. Vanilla's own background pregeneration is suppressed during the run.**
+`ZoneSystem.Update` calls `CreateGhostZones` every frame around the local reference position and
+every connected peer, ghost-generating zones in raster order from a square's corner - racing our
+ordering for exactly the claims we care about. `GhostZoneSuppressionPatch` no-ops it while
+`pregenerateworld` is running. That's free: ghost zones are pure lookahead with no gameplay
+effect, and we're generating the whole map anyway.
+
+`CreateLocalZones` is deliberately **not** suppressed - it spawns the live zones players stand
+on, and blocking it would drop anyone connected through the world. So for a clean result, run
+this on a dedicated server with nobody connected, or at least stand at spawn. The command warns
+at startup if peers are connected or the reference position is far from the origin.
+
+One extra guard: `SpawnZone` can also refuse a zone whose pending location prefab hasn't
+finished loading, so a zone that never becomes spawnable would otherwise stall the whole run.
+If the cursor sits on one zone for 60s it's set aside (logged) and retried in a final pass;
+10 such zones in a row aborts the run and saves, on the assumption the terrain builder is
+stuck rather than slow.
+
+The command also refuses to start if `ZoneSystem.LocationsGenerated` is still false - starting
+mid-`GenerateLocationsTimeSliced` would mean claiming unique locations from an incomplete
+candidate list.
+
 **Expect this to take a long time - very plausibly hours on a full-size map.** The real
 bottleneck is `HeightmapBuilder`, the game's own terrain generator: it's a *single* background
 thread processing one zone's terrain at a time. That's an engine-level constraint this mod
@@ -98,9 +164,10 @@ doesn't (and safely can't) work around. A default 10000m-radius world has on the
 It's safe to interrupt: already-generated zones are skipped on the next run (progress is
 saved periodically as it goes - see `PregenSaveEveryNZones` config, default every 2000 zones -
 specifically so a crash or restart mid-run doesn't lose everything back to zero), and it does
-a final synchronous save when done. Progress logs to the BepInEx console/log every ~10s.
-Tune `ZonesPerTick` in config if needed, though it mostly won't change total runtime - it's
-still gated by the same single-threaded terrain builder either way.
+a final synchronous save when done. Progress logs to the BepInEx console/log every ~10s,
+including how far out from the origin the spiral has reached. Tune `ZonesPerTick` in config if
+needed, though it mostly won't change total runtime - it's still gated by the same
+single-threaded terrain builder either way.
 
 **Test this on a copy of your world first.** This mutates real save data at scale (tens of
 thousands of zones); I verified the API against the current game build and the mechanism
