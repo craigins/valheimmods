@@ -1,0 +1,118 @@
+name: Build and release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Valheim Dedicated Server. Anonymous-downloadable, and ships the same assembly_valheim.dll
+  # the client does - which is what the mod actually references.
+  VALHEIM_SERVER_APPID: '896660'
+  # Keep in step with tools/install-bepinex.ps1.
+  BEPINEX_VERSION: '5.4.2333'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Deliberately not cached. A stale cache would silently build against the previous
+      # game version, which is exactly the failure that matters here - every patch target
+      # has to be re-verified against the current assembly after a Valheim update, so a
+      # release built on yesterday's assemblies would be worse than a slow build.
+      - name: Download Valheim dedicated server assemblies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip' -OutFile steamcmd.zip
+          Expand-Archive steamcmd.zip -DestinationPath steamcmd -Force
+
+          # First run bootstraps/self-updates and can exit non-zero while still succeeding,
+          # so the install is verified by looking for the assemblies rather than by exit code.
+          & .\steamcmd\steamcmd.exe +force_install_dir "$PWD\valheim-server" +login anonymous `
+              +app_update $env:VALHEIM_SERVER_APPID validate +quit
+          $exit = $LASTEXITCODE
+
+          $managed = Join-Path $PWD 'valheim-server\valheim_server_Data\Managed'
+          if (-not (Test-Path (Join-Path $managed 'assembly_valheim.dll'))) {
+            throw "steamcmd finished with exit code $exit and no assembly_valheim.dll under $managed"
+          }
+
+          $ver = (Get-Item (Join-Path $managed 'assembly_valheim.dll')).LastWriteTimeUtc
+          Write-Host "assembly_valheim.dll built $ver"
+          "VALHEIM_MANAGED=$managed" >> $env:GITHUB_ENV
+
+      - name: Download BepInEx
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/$env:BEPINEX_VERSION/"
+          Invoke-WebRequest -Uri $url -OutFile bepinex.zip
+          Expand-Archive bepinex.zip -DestinationPath bepinex -Force
+
+          $core = Join-Path $PWD 'bepinex\BepInExPack_Valheim\BepInEx\core'
+          if (-not (Test-Path (Join-Path $core 'BepInEx.dll'))) {
+            throw "No BepInEx.dll under $core"
+          }
+          "BEPINEX_CORE=$core" >> $env:GITHUB_ENV
+
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet build src/CraiginsValheimMod/CraiginsValheimMod.csproj -c Release `
+            -p:ValheimManagedDir="$env:VALHEIM_MANAGED" `
+            -p:ValheimBepInExCoreDir="$env:BEPINEX_CORE"
+
+      - name: Check the built version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          $dll = 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll'
+          $built = [Reflection.AssemblyName]::GetAssemblyName((Resolve-Path $dll)).Version
+          $short = "$($built.Major).$($built.Minor).$($built.Build)"
+          if ($short -ne $tag) {
+            throw "Tag $tag does not match the built assembly version $short - bump Plugin.ModVersion and the csproj <Version> before tagging."
+          }
+          Write-Host "Tag $tag matches built version $short"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CraiginsValheimMod
+          path: src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll
+
+      # Attaches to an existing release if there is one (so hand-written notes are never
+      # overwritten), otherwise opens a draft for the notes to be written into. Nothing is
+      # ever published automatically.
+      - name: Attach the DLL to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $tag = '${{ github.ref_name }}'
+          $dll = 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll'
+
+          gh release view $tag 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag exists - replacing its DLL."
+            gh release upload $tag $dll --clobber
+          } else {
+            Write-Host "No release for $tag yet - creating a draft to write notes into."
+            gh release create $tag $dll --draft --title "$tag" `
+              --notes "Draft created by CI. Write the notes, then publish."
+          }
+          if ($LASTEXITCODE -ne 0) { throw "gh release step failed with exit code $LASTEXITCODE" }

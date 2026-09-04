@@ -8,8 +8,12 @@
     <Product>Craigins Valheim Mod</Product>
     <Authors>craigins</Authors>
 
-    <ValheimManagedDir>$(ValheimInstallDir)\valheim_Data\Managed</ValheimManagedDir>
-    <ValheimBepInExCoreDir>$(ValheimInstallDir)\BepInEx\core</ValheimBepInExCoreDir>
+    <!-- Overridable so CI can point at a Valheim *dedicated server* download instead of a game
+         install: the server ships the same assembly_valheim.dll but under valheim_server_Data,
+         and has no BepInEx of its own. Pass -p:ValheimManagedDir=... -p:ValheimBepInExCoreDir=...
+         to build without a real install. See .github/workflows/release.yml. -->
+    <ValheimManagedDir Condition="'$(ValheimManagedDir)' == ''">$(ValheimInstallDir)\valheim_Data\Managed</ValheimManagedDir>
+    <ValheimBepInExCoreDir Condition="'$(ValheimBepInExCoreDir)' == ''">$(ValheimInstallDir)\BepInEx\core</ValheimBepInExCoreDir>
     <ValheimPluginsDir>$(ValheimInstallDir)\BepInEx\plugins\CraiginsValheimMod</ValheimPluginsDir>
 
     <!-- JotunnLib's package auto-imports its own internal reference list, built for a separate
