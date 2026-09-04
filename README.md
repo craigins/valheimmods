@@ -7,13 +7,13 @@ BepInEx + Jotunn mod project for Valheim.
 - `src/CraiginsValheimMod/` - the mod itself.
   - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
     `Harmony.PatchAll()`.
-  - `Patches/` - all ported from your old `ValheimNoMist` project (found on H:), with every
+  - `Patches/` - all ported from an older `ValheimNoMist` project of mine, with every
     patch target re-verified against the current `assembly_valheim.dll` before porting:
     - `TerrainMaskPatches.cs` - Mistlands terrain generation using the smoother base-height
       algorithm instead of its own craggy mask. Only the removed `DUtils` noise helper needed
       swapping (for `Mathf`); everything else matched exactly.
     - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). **Wisp
-      light radius has no implementation** - no source for it was found anywhere on H:, so it
+      light radius has no implementation** - no source for it was found in the archive, so it
       still needs to be built (or found) from scratch.
     - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events, no
       rain damage on roofed builds, plant-anywhere, and an off-by-default food-total patch
@@ -175,11 +175,13 @@ matches vanilla's own, but I have not been able to run it myself (I can't launch
 live game session) - there's no substitute for you watching it complete once on a disposable
 copy before trusting it against a world you care about.
 
-## Multiple Valheim installs on this machine
+## Multiple Valheim installs
 
-Two other installs were found under `H:\Programs\Steam\steamapps\common\` (`Valheim`,
-`ValheimBak`, `ValheimFresh`) already carrying BepInEx and an old InSlimVML loader - this
-project targets the clean install at
-`E:\Programs\Steam\steamapps\common\Valheim` instead, where a fresh BepInEx
-5.4.2333 was installed. If you'd rather use one of the H: installs, update
-`LocalPaths.props` and re-run `tools/install-bepinex.ps1` if it needs a newer BepInEx.
+If you keep more than one copy of the game around (a live one, a backup, a clean one), this
+project builds against whichever is named by `ValheimInstallDir` in `LocalPaths.props`, and
+deploys the plugin into that install's `BepInEx/plugins/`. Point it at a different copy by
+editing that file and re-running `tools/install-bepinex.ps1` if that install needs a newer
+BepInEx.
+
+Prefer a copy that isn't already carrying another mod loader - an old **InSlimVML** folder
+sitting alongside BepInEx can cause conflicts, and is worth cleaning up first.

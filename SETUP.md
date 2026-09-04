@@ -77,11 +77,9 @@
    Tell me which world/install you actually want pregenerated and I can help wire up whichever
    path makes sense.
 
-## Note on your existing installs
+## Note on other installs
 
-`H:\Programs\Steam\steamapps\common\` has three Valheim copies (`Valheim`, `ValheimBak`,
-`ValheimFresh`), and the main one already has BepInEx plus an old **InSlimVML** loader folder
-sitting alongside it. I left those alone entirely - this project only touched the vanilla
-`E:\...\Valheim` install. If you want this project to target one of the H: installs instead
-(e.g. to reuse existing configs), update `ValheimInstallDir` in `LocalPaths.props` and tell me -
-mixing InSlimVML with BepInEx can cause conflicts, so that install may need cleanup first.
+If you keep several Valheim copies around, this project only ever touches the one named by
+`ValheimInstallDir` in `LocalPaths.props` - nothing else is modified. Prefer a clean install:
+mixing an old **InSlimVML** loader with BepInEx can cause conflicts, so an install already
+carrying one may need cleanup before it's a good target.

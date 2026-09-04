@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 craigins
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+This license covers the original source code in this repository only.
+
+Valheim is copyright Iron Gate Studio AB. This project is an unofficial,
+unaffiliated modification. It references the game's assemblies at build time
+and patches them at runtime, but redistributes none of the game's code or
+assets - you must own and install Valheim yourself. Nothing under bin/ or obj/
+(including the publicized game assemblies the build produces locally) is
+covered by this license or redistributable.
+
+Third-party dependencies retain their own licenses and are declared as
+dependencies rather than bundled here - install them separately per SETUP.md.
+Jotunn (JotunnLib) ships as MIT per its NuGet package metadata; for BepInEx
+and HarmonyX, see their respective projects for current terms.
