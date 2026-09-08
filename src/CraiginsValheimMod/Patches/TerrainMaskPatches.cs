@@ -23,8 +23,21 @@ namespace CraiginsValheimMod.Patches
     ///
     /// Confirmed working in-game (2026-09-04): Mistlands generated smoothly across a full
     /// 76,470-zone 'pregenerateworld' run. Toggle via the "SmoothMistlandsTerrain" config
-    /// setting to fall back to vanilla generation - but note the result is baked into a zone
-    /// when it generates, so flipping it later only affects zones generated after the change.
+    /// setting to fall back to vanilla generation.
+    ///
+    /// Correction (2026-09-05): an earlier version of this comment said the result is baked
+    /// into a zone when it generates. It isn't. Terrain height and biome are recomputed from
+    /// the seed on every load - ZoneSystem.SaveASync stores only generated-zone coords, global
+    /// keys and location instances, and Heightmap.cs never touches ZPackage or ZDO at all. So
+    /// flipping this toggle re-shapes Mistlands terrain *everywhere, immediately*, on the next
+    /// load. What stays put is the content that was already placed under the old setting
+    /// (vegetation and locations are ZDOs and are baked).
+    ///
+    /// The practical consequence: pregenerating does NOT let unmodded clients see smooth
+    /// Mistlands. Every client runs WorldGenerator itself, so a vanilla client computes vanilla
+    /// craggy terrain - while the synced vegetation/location ZDOs were placed against the
+    /// smoothed surface, leaving objects floating or buried. Every client needs this mod.
+    /// See WorldGen/DESIGN_NOTES.md.
     /// </summary>
     [HarmonyPatch(typeof(WorldGenerator), nameof(WorldGenerator.GetMistlandsHeight))]
     internal static class TerrainMaskPatches
