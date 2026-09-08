@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using CraiginsValheimMod.Dungeons;
 using HarmonyLib;
 using UnityEngine;
 
@@ -29,9 +31,15 @@ namespace CraiginsValheimMod.Patches
     /// Generate calls GenerateRooms, then Save() - which serialises the actual room list (id,
     /// position, rotation) into the ZDO - and only then clears the static m_placedRooms /
     /// m_openConnections / m_doorConnections lists. So GenerateRooms is the one window where the
-    /// result is both readable and still changeable before it's persisted. Re-running it is
-    /// exactly what Generate itself does: Clear() destroys every child object, the static lists
-    /// get emptied, Random is re-seeded, and generation starts over from nothing.
+    /// result is both readable and still changeable before it's persisted.
+    ///
+    /// Re-running it is *almost* what Generate itself does - Clear(), empty the static lists,
+    /// re-seed Random, build again - with one addition Generate doesn't need. Clear() only
+    /// destroys children of the generator's transform, i.e. the room shells; a room's actual
+    /// contents are instantiated unparented and survive it. Generate never notices because it
+    /// only ever runs on a dungeon that doesn't exist yet, but a reroll does, so each discarded
+    /// attempt has to have its contents destroyed explicitly (DiscardAttemptContents below) or
+    /// they accumulate in the interior underneath the layout that finally wins.
     ///
     /// Only Algorithm.Dungeon is touched. The CampGrid/CampRadial algorithms (Fuling villages and
     /// friends) don't go through PlaceRooms and don't use m_minRooms/m_maxRooms at all.
@@ -146,11 +154,12 @@ namespace CraiginsValheimMod.Patches
             }
 
             /// <summary>
-            /// The same reset Generate does around GenerateRooms: destroy everything built so
-            /// far, empty the static bookkeeping lists, re-seed, build again.
+            /// Throw away the attempt built so far and build another one: destroy its contents
+            /// and its rooms, empty the static bookkeeping lists, re-seed, generate again.
             /// </summary>
             private static void Regenerate(DungeonGenerator dungeon, int seed, ZoneSystem.SpawnMode mode)
             {
+                DiscardAttemptContents(dungeon, mode);
                 dungeon.Clear();
                 DungeonGenerator.m_placedRooms.Clear();
                 DungeonGenerator.m_openConnections.Clear();
@@ -158,6 +167,53 @@ namespace CraiginsValheimMod.Patches
                 Random.InitState(seed);
                 dungeon.GenerateRooms(mode);
             }
+
+            /// <summary>
+            /// Destroys the networked contents of the attempt we're about to throw away.
+            ///
+            /// Clear() alone isn't enough, and this is the whole reason the method exists.
+            /// Clear() destroys children of the generator's transform, which is only the room
+            /// shells; PlaceRoom instantiates each room's ZNetView objects - chests, spawners,
+            /// torches - UNPARENTED, and PlaceDoors does the same with doors. Without this,
+            /// every discarded layout would leave its full contents floating in the interior and
+            /// the winning layout would be built on top of all of them.
+            ///
+            /// Skipped in Ghost mode, where there is by construction nothing to clean up:
+            /// ZoneSystem.SpawnLocation wraps the whole Generate call in StartGhostInit /
+            /// FinishGhostInit so no ZDOs are created at all, and PlaceRoom destroys each clone
+            /// on the spot. That's the mode 'pregenerateworld' uses, so the common path pays
+            /// nothing for this.
+            ///
+            /// Player-built pieces are preserved, which only matters when this runs underneath
+            /// 'resetdungeon' on a dungeon somebody has built in - that command promises to keep
+            /// them, and a reroll must not quietly break the promise.
+            ///
+            /// The IsServer check is belt-and-braces: GenerateRooms is only ever reached in Full
+            /// or Ghost mode, both of which are server-side (a client rebuilds a dungeon from
+            /// saved room data in DungeonGenerator.Load, never by generating it). Destroying
+            /// world ZDOs is a server operation regardless, so assert it rather than assume it.
+            /// </summary>
+            private static void DiscardAttemptContents(DungeonGenerator dungeon, ZoneSystem.SpawnMode mode)
+            {
+                if (mode == ZoneSystem.SpawnMode.Ghost || ZNetScene.instance == null || ZDOMan.instance == null)
+                {
+                    return;
+                }
+                if (ZNet.instance == null || !ZNet.instance.IsServer())
+                {
+                    return;
+                }
+
+                DungeonInterior.Collect(dungeon, preservePlayerBuilt: true, _discarded, out int _);
+                if (_discarded.Count > 0)
+                {
+                    DungeonInterior.Destroy(_discarded);
+                }
+                _discarded.Clear();
+            }
+
+            /// <summary>Reused across attempts - a reroll can run this up to MaxDungeonRerolls times per dungeon.</summary>
+            private static readonly List<ZDO> _discarded = new List<ZDO>();
         }
     }
 }

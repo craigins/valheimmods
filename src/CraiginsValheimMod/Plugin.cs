@@ -1,5 +1,6 @@
 using BepInEx;
 using BepInEx.Configuration;
+using CraiginsValheimMod.Dungeons;
 using CraiginsValheimMod.WorldGen;
 using HarmonyLib;
 using Jotunn.Managers;
@@ -32,6 +33,11 @@ namespace CraiginsValheimMod
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
+
+        public static ConfigEntry<bool> DungeonResetFromEntrance;
+        public static ConfigEntry<string> DungeonResetCostItem;
+        public static ConfigEntry<int> DungeonResetCostAmount;
+        public static ConfigEntry<string> DungeonResetBossGate;
 
         public static ConfigEntry<int> PregenZonesPerTick;
         public static ConfigEntry<int> PregenSaveEveryNZones;
@@ -103,6 +109,37 @@ namespace CraiginsValheimMod
                 "attempt wins. Each reroll is a full rebuild of that dungeon, so high values cost real time " +
                 "during 'pregenerateworld'. Ignored when MinDungeonRooms is 0.");
 
+            DungeonResetFromEntrance = Config.Bind(
+                "Dungeons", "ResetFromEntrance", false,
+                "Lets players rebuild a dungeon by using an item on its entrance (a Surtling core by " +
+                "default), consumed on success. Uses Teleport.UseItem, which is an unused stub in vanilla, " +
+                "so nothing else is affected - and it works while merely hovering the entrance, unlike a " +
+                "keybind, which would fight the entrance's own walk-in-to-enter trigger. This must be enabled " +
+                "on the SERVER, which does the actual work; enable it on clients too so they get the hover " +
+                "hint. Refuses while anyone is inside, and keeps player-built pieces. Off by default - it's a " +
+                "permanent, irreversible change to a world.");
+            DungeonResetCostItem = Config.Bind(
+                "Dungeons", "ResetCostItem", "SurtlingCore",
+                "Prefab name of the item consumed to rebuild a dungeon from its entrance. Any item in " +
+                "ObjectDB works (e.g. 'SurtlingCore', 'Ruby', 'DragonEgg'). The server's value is the one " +
+                "that matters for what's accepted; clients use theirs only to decide what to send.");
+            DungeonResetCostAmount = Config.Bind(
+                "Dungeons", "ResetCostAmount", 1,
+                "How many of ResetCostItem a rebuild costs. Minimum 1.");
+            DungeonResetBossGate = Config.Bind(
+                "Dungeons", "ResetBossGate",
+                "BlackForest=gd_king, Swamp=Bonemass, Mountain=Dragon, Plains=GoblinKing, " +
+                "Mistlands=SeekerQueen, AshLands=Fader",
+                "Which boss a world must have killed before dungeons in a biome can be regenerated, as " +
+                "'Biome=BossPrefab' pairs. Empty to allow regeneration everywhere. Boss prefab names: " +
+                "Eikthyr, gd_king (the Elder), Bonemass, Dragon (Moder), GoblinKing (Yagluth), SeekerQueen, " +
+                "Fader - the required key is read off the prefab, so it stays right across game updates. A " +
+                "name that isn't a boss prefab is used as a raw global key instead (e.g. 'KilledTroll'). " +
+                "Several rules may name the same biome, and all of them must be satisfied. The gate is " +
+                "world-wide: one player's kill unlocks the biome for everyone, since that's what a boss " +
+                "kill sets. The SERVER's value is what's enforced; clients use theirs only for the hover " +
+                "text. 'resetdungeon force' in the console bypasses it.");
+
             PregenZonesPerTick = Config.Bind(
                 "WorldPregeneration", "ZonesPerTick", 64,
                 "How many zones the 'pregenerateworld' console command attempts per frame. Higher isn't " +
@@ -118,6 +155,7 @@ namespace CraiginsValheimMod
                 "discarding the oldest, and going past that just makes it rebuild the same terrain twice.");
 
             CommandManager.Instance.AddConsoleCommand(new PregenerateWorldCommand());
+            CommandManager.Instance.AddConsoleCommand(new ResetDungeonCommand());
 
             _harmony.PatchAll();
             Logger.LogInfo($"{ModName} v{ModVersion} loaded");

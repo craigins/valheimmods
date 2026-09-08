@@ -31,9 +31,15 @@ BepInEx + Jotunn mod project for Valheim.
       the prefab's own room floor (and its iteration budget, which is what `m_maxRooms`
       actually is), and rerolls the layout with a derived seed when a dungeon still comes up
       short - some layouts close off all their connections after a room or two and no amount
-      of extra iterations can help those. Off by default; **a dungeon's layout is baked into
-      the world permanently when its zone first generates**, so this has to be set before the
-      zone exists, and matters most before a `pregenerateworld` run.
+      of extra iterations can help those. Each discarded attempt has its contents destroyed
+      explicitly (via `Dungeons/DungeonInterior.cs`): `DungeonGenerator.Clear()` only removes
+      the room shells, and a room's chests/spawners/doors are instantiated unparented, so
+      without that they'd pile up in the interior under the layout that finally wins. Skipped
+      in `SpawnMode.Ghost`, where the game already discards them itself - so `pregenerateworld`
+      pays nothing for it. Off by default; **a dungeon's layout is baked into the world
+      permanently when its zone first generates**, so this has to be set before the zone
+      exists, and matters most before a `pregenerateworld` run - though `resetdungeon` can now
+      apply it retroactively to one dungeon at a time.
     - `BreedingPatches.cs` - `UnlimitedBreeding`. Not a port - new. Lifts the nearby-population
       cap on tamed animals: `Procreation.Procreate` counts instances of its own prefab plus its
       offspring prefab within `m_totalCheckRange` and gives up once that reaches
@@ -57,10 +63,24 @@ BepInEx + Jotunn mod project for Valheim.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.
+  - `Dungeons/` - wiping an already-generated dungeon interior and rebuilding it, via the
+    `resetdungeon` console command or by using a Surtling core on a dungeon entrance. See
+    **Resetting a dungeon** below. `DungeonInterior.cs` holds the "find and clear everything in
+    this dungeon" primitive, `DungeonReset.cs` the checks and the rebuild both entry points
+    share, `DungeonEntrancePatches.cs` the in-game interaction and its client/server RPC, and
+    `DungeonProgression.cs` the boss-kill gate that keeps a biome's dungeons sealed until its
+    boss is dead.
   - `WorldGen/` - `pregenerateworld` console command, plus the ghost-zone suppression patch it
-    relies on. See **World pregeneration** below.
+    relies on. See **World pregeneration** below. Also `WorldGen/DESIGN_NOTES.md` - notes on
+    feeding an authored biome map into world generation instead of the game's own biome noise.
+    Not implemented, but unlike the Stargate notes these *are* verified against the current
+    decompiled `assembly_valheim.dll`.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
+- `docs/GAME_CONSTANTS.md` - world extent, player movement, equipment modifiers and boat
+  physics values extracted from the game (2026-02-19 build), plus how to re-extract them.
+  Prefab-serialized tuning values are **not** in the DLL, so a decompiler alone gives wrong
+  numbers - the file explains the two sources.
 - `LocalPaths.props` - your machine's Valheim install path (gitignored). Copy from
   `LocalPaths.props.example` if it's missing.
 - `tools/install-bepinex.ps1` - (re)installs BepInEx into a given Valheim folder.
@@ -129,6 +149,134 @@ After a `dotnet build`, the publicized assemblies are cached at
 gameplay types live - see above) and `...publicized/Assembly-CSharp.dll` - open either in
 [ILSpy](https://github.com/icsharpcode/ILSpy) or [dnSpy](https://github.com/dnSpyEx/dnSpy) to
 browse current class/method names.
+
+## Resetting a dungeon
+
+Console command `resetdungeon` (server-only) wipes an already-generated dungeon interior and
+rebuilds it with a new layout. Vanilla bakes a dungeon's rooms into its ZDO the first time its
+zone generates and never revisits them, so this is the only way to change a dungeon that
+already exists - including applying `MinDungeonRooms` retroactively to one.
+
+```
+resetdungeon                    # nearest loaded dungeon
+resetdungeon list               # what can be reset right now
+resetdungeon list all           # every dungeon in the world, with coordinates
+resetdungeon name=SunkenCrypt4  # target by location name (substring, case-insensitive)
+resetdungeon zone=12,-34        # target by zone, no spaces
+resetdungeon seed=12345         # a specific layout instead of a fresh random one
+resetdungeon dry                # report what would happen, change nothing
+resetdungeon force              # go ahead even though someone is inside, or the boss gate says no
+resetdungeon wipebuilt          # also delete player-built pieces inside
+```
+
+### In game: use a Surtling core on the entrance
+
+Set `Dungeons.ResetFromEntrance = true` (on the **server** - it does the work; on clients too,
+so they get the hover hint) and a dungeon entrance gains a second line on its hover text:
+
+```
+[E] Enter
+[Use Surtling core] Regenerate
+```
+
+Hover the entrance, use the core from your inventory, and the dungeon rebuilds. The core is
+consumed only when the server reports success, so a refused reset - somebody still inside -
+doesn't eat it. `ResetCostItem` (any prefab name in ObjectDB) and `ResetCostAmount` configure
+the price.
+
+### Gating regeneration on boss kills
+
+`Dungeons.ResetBossGate` ties each biome's dungeons to its boss, so a farmable dungeon can't run
+ahead of progression - no rerolling Black Forest crypts until the Elder is down, no Sunken Crypts
+until Bonemass, no frost caves until Moder:
+
+```
+BlackForest=gd_king, Swamp=Bonemass, Mountain=Dragon, Plains=GoblinKing, Mistlands=SeekerQueen, AshLands=Fader
+```
+
+That's the default. Set it empty to allow regeneration everywhere. A locked entrance says so
+instead of offering the trade:
+
+```
+[E] Enter
+Sealed until The Elder falls
+```
+
+Bosses are named by **prefab**, not by global key, and the key is read off the prefab's
+`m_defeatSetGlobalKey` at runtime. That matters: the five original bosses have their keys in the
+`GlobalKeys` enum, but the Queen's and Fader's exist only as serialized strings inside the asset
+bundles, so hardcoding them means guessing. Reading the prefab is right by construction, gives us
+the boss's localized name for the hover text, and keeps working across game updates. A token that
+isn't a boss prefab is used as a raw global key instead, so `Meadows=KilledTroll` works too.
+
+The gate is **world-wide**, because that's what a boss kill is: `Character.OnDeath` calls
+`ZoneSystem.SetGlobalKey`, which the server stores in the world save and pushes to every client,
+so one player's kill unlocks the biome for everyone and both ends can answer the question without
+extra syncing. Vanilla also queues a per-player copy of the same key, but only the local client
+can read its own - the server has no view of another player's unique keys - so a per-player gate
+would be an honour system.
+
+The biome comes from `WorldGenerator.GetBiome` at the location's own position. `PlaceLocations`
+tests that exact point against the location's allowed-biome mask when it places it, so asking the
+same function about the same point gives back the biome that put the dungeon there - more precise
+than reading the mask, which lists several biomes for some location types.
+
+The server's value is the one enforced; clients use theirs only to draw the hover text. The
+console command honours the gate as well, and `resetdungeon force` bypasses it.
+
+This hangs off `Teleport.UseItem`, which is a literal `return false;` stub in vanilla - an
+entire interaction verb sitting unused on exactly the right object. **A keybind was the obvious
+alternative and doesn't work**: `Teleport.OnTriggerEnter` calls `Interact()` the moment you walk
+into the entrance collider, so you're teleported before any "stand here and press something"
+scheme can fire. Hold-E fails for the same reason (a quick E press teleports you first), and
+alt+E would silently repurpose an existing interaction. Using an item works from a step back
+while the entrance is only hovered, which is the one place the interaction is stable.
+
+The interaction happens on the player's client and the rebuild has to happen where the world
+lives, so the client validates locally, asks the server over a routed RPC, and the server does
+the authoritative checks and the work. The server does *not* verify the client really held a
+core - it has no view of a client's inventory, and Valheim's inventory is client-authoritative
+throughout. Same trust model as the rest of the game; admin-gating it instead would just make
+the cost decorative.
+
+### Why interiors are easy to reset and surface locations aren't
+
+Dungeon interiors aren't in the terrain. `Location.Awake` instantiates the interior 5000m
+straight up from the entrance, centred on the *zone* centre in XZ, and `Character.InInterior`
+is a bare `pos.y > 3000f`. So there's no `TerrainComp` and no heightmap edits to unwind - and
+because ZDO sectors are computed from XZ only, every interior ZDO lives in the same sector as
+the surface entrance. "Everything in this dungeon" is one `FindSectorObjects` call plus a
+height filter.
+
+The reset itself is two steps. `DungeonGenerator.Generate(seed, SpawnMode.Full)` is public and
+already does the whole rebuild - `Clear`, re-seed `Random`, `GenerateRooms`, `Save` back to the
+same ZDO - so generation isn't reimplemented, just re-invoked. What it *doesn't* do is clean up:
+`Clear()` only destroys children of the generator's transform, which is the room shells. The
+networked contents are instantiated **unparented** in `PlaceRoom`, so they survive `Clear()` as
+orphaned ZDOs and the new layout gets built on top of the old one's furniture. Sweeping those
+first is what `DungeonInterior` is for.
+
+### Limits worth knowing before you use it
+
+- **Only dungeons in a currently loaded zone can be targeted.** A `DungeonGenerator` exists as
+  a GameObject only while its zone is live, and there's no supported way to ask `ZoneSystem`
+  for an arbitrary one. Go stand at the dungeon you want; `resetdungeon list all` tells you
+  where the others are.
+- **Connected clients keep showing the old rooms** until they leave and re-enter the zone.
+  `DungeonGenerator.Load()` runs only in `Awake` and nothing pushes a "your layout changed"
+  message. Their *contents* are destroyed immediately, so in between it looks like an emptied
+  version of the old dungeon. The command refuses to run while anyone is inside (`force`
+  overrides) because they'd otherwise be left standing in a stale copy 5000m above the map.
+- **Loot and monsters reroll too**, not just walls - `RandomSpawn.Randomize` is driven by a
+  per-room seed derived from room position.
+- **Player-built pieces inside are kept** by default, identified by the `creator` ZDO field
+  that `Piece.SetCreator` stamps and that world-placed objects leave at 0. Loose dropped items
+  are *not* distinguishable that way and are always swept.
+- **It breaks determinism for that dungeon.** A reset dungeon no longer matches what fresh
+  worldgen would produce for the world seed. The seed used is printed so a layout can be
+  reproduced with `seed=`.
+- Camps (`Algorithm.CampGrid` / `CampRadial` - Fuling villages and the like) are refused. Those
+  sit in the terrain, not in an interior, and none of the above applies to them.
 
 ## World pregeneration
 
