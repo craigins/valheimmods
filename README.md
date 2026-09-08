@@ -4,6 +4,10 @@ BepInEx + Jotunn mod project for Valheim.
 
 ## Layout
 
+Two plugins, built from one repo and released together: `CraiginsValheimMod.dll` (everything
+below) and `CraiginsValheimInstances.dll` (instanced dungeons only). The instances plugin
+depends on the base mod; the base mod knows nothing about it, so it runs fine alone.
+
 - `src/CraiginsValheimMod/` - the mod itself.
   - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
     `Harmony.PatchAll()`.
@@ -70,6 +74,8 @@ BepInEx + Jotunn mod project for Valheim.
     share, `DungeonEntrancePatches.cs` the in-game interaction and its client/server RPC, and
     `DungeonProgression.cs` the boss-kill gate that keeps a biome's dungeons sealed until its
     boss is dead.
+    (`AssemblyInfo.cs` shares these two classes with the instances plugin below via
+    `InternalsVisibleTo` - they're internals shared with a known sibling, not a public API.)
   - `WorldGen/` - `pregenerateworld` console command, plus the ghost-zone suppression patch it
     relies on. See **World pregeneration** below. Also `WorldGen/DESIGN_NOTES.md` - notes on
     feeding an authored biome map into world generation instead of the game's own biome noise.
@@ -77,6 +83,14 @@ BepInEx + Jotunn mod project for Valheim.
     decompiled `assembly_valheim.dll`.
   - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
     Not implemented - a bigger feature to tackle separately.
+- `src/CraiginsValheimInstances/` - a **second plugin DLL**: temporary instanced dungeons,
+  procedurally generated copies that live in their own zone far outside the map, are entered by
+  teleport, and are destroyed once everyone leaves. See **Instanced dungeons** below, and
+  `DESIGN_NOTES.md` in that folder for the full design including the quest layer that isn't
+  built yet. `InstancesPlugin.cs` is its entry point, `InstanceRegion.cs` the address space,
+  `DungeonInstanceManager.cs` the server-side spawn/poll/reap, `InstanceNetwork.cs` the
+  client/server split, `InstanceTeleportPatches.cs` the exit and logout safety nets, and
+  `DungeonInstanceCommand.cs` the console command.
 - `docs/GAME_CONSTANTS.md` - world extent, player movement, equipment modifiers and boat
   physics values extracted from the game (2026-02-19 build), plus how to re-extract them.
   Prefab-serialized tuning values are **not** in the DLL, so a decompiler alone gives wrong
@@ -99,24 +113,32 @@ This does three things automatically, using the path from `LocalPaths.props`:
    Note: in Valheim, gameplay code (`WorldGenerator`, `Player`, `Mister`, etc.) actually lives
    in `assembly_valheim.dll` - `Assembly-CSharp.dll` itself is nearly empty (~23KB). Patch
    targets are almost always in `assembly_valheim`.
-3. Copies the built DLL + PDB into `<Valheim>/BepInEx/plugins/CraiginsValheimMod/` so it's ready
-   to test on next launch.
+3. Copies each built DLL + PDB into `<Valheim>/BepInEx/plugins/<plugin name>/` so it's ready
+   to test on next launch - `CraiginsValheimMod/` and `CraiginsValheimInstances/`.
+
+`dotnet build` at the repo root builds both projects (they're both in `CraiginsValheimMod.slnx`).
+Build one on its own by naming its csproj. Installing is the same idea: copy
+`CraiginsValheimMod.dll` into `BepInEx/plugins/`, and add `CraiginsValheimInstances.dll` next to
+it only if you want instanced dungeons. The instances plugin declares a BepInEx dependency on the
+base mod, so it refuses to load without it rather than half-working.
 
 ## Releasing
 
-Bump the version in three places - `Plugin.ModVersion`, the csproj `<Version>`, and the log
-line quoted in `SETUP.md` - then tag and push:
+Both plugins are versioned and released together, so bump the version in five places -
+`Plugin.ModVersion`, `InstancesPlugin.ModVersion`, both csproj `<Version>`s, and the log line
+quoted in `SETUP.md` - then tag and push:
 
 ```
 git tag -a v0.5.0 -m "..."
 git push origin main --follow-tags
 ```
 
-`.github/workflows/release.yml` builds Release on a runner and attaches
-`CraiginsValheimMod.dll` to the release. If a release for that tag already exists it just
-replaces the DLL, so hand-written notes are never overwritten; if not, it opens a **draft** to
-write notes into. Nothing is ever published automatically. A tag whose version doesn't match
-the built assembly fails the build rather than shipping a mislabelled DLL.
+`.github/workflows/release.yml` builds Release on a runner and attaches both
+`CraiginsValheimMod.dll` and `CraiginsValheimInstances.dll` to the release. If a release for that
+tag already exists it just replaces the DLLs, so hand-written notes are never overwritten; if
+not, it opens a **draft** to write notes into. Nothing is ever published automatically. A tag
+whose version doesn't match either built assembly fails the build rather than shipping a
+mislabelled DLL.
 
 The runner has no Valheim install, so it takes its references from the **Valheim Dedicated
 Server** (Steam app `896660`), which steamcmd can fetch anonymously and which ships the same
@@ -277,6 +299,84 @@ first is what `DungeonInterior` is for.
   reproduced with `seed=`.
 - Camps (`Algorithm.CampGrid` / `CampRadial` - Fuling villages and the like) are refused. Those
   sit in the terrain, not in an interior, and none of the above applies to them.
+
+## Instanced dungeons
+
+Temporary dungeons that aren't part of the world: a location is spawned into an otherwise unused
+zone about 128 km from the map, generated with a chosen seed and room theme, entered by teleport,
+and destroyed once everyone has left. Off by default (`Instances.Enabled`), and **untested**.
+
+This is the one part of the repo that ships as a **separate plugin**,
+`CraiginsValheimInstances.dll`, with its own config file
+(`BepInEx/config/com.craigins.valheiminstances.cfg`). Everything else in the mod is a small
+tweak to a world that already exists; instances spawn zones outside the map, teleport players
+into them, run their own RPC protocol and reap themselves afterwards. That makes them the piece
+most likely to break on a game update and the piece a server owner is most likely to want to run
+without - so whether they're loaded at all is a file you copy or don't, not a toggle inside a
+plugin that gets loaded and patched either way. Harmony patches follow their subsystem, so
+deleting the DLL is a complete uninstall.
+
+It's a hard dependency in one direction only: the instances plugin needs the base mod (for the
+dungeon primitives in `Dungeons/`, and BepInEx loads it first because of that), while the base
+mod has no idea it exists.
+
+```
+dungeoninstance locations                          # what this world can instance - names aren't guessable
+dungeoninstance open                               # uses Instances.DefaultLocation
+dungeoninstance open location=Crypt3 theme=Cave rooms=30-60 seed=12345
+dungeoninstance list
+dungeoninstance enter 1
+dungeoninstance out                                # local escape hatch if an exit ever fails
+dungeoninstance close 1 | close all
+```
+
+Unlike `resetdungeon` this works from a client: the server does everything authoritative and
+replies with a destination, because the teleport has to happen on the asking player's own client.
+Both sides need `Instances.Enabled` - the server to do the work, the client to run the command.
+
+### Why a distant zone and not just a high altitude
+
+The obvious way to keep an instance from colliding with real content is to put it above the
+vanilla dungeon band. That does prevent overlap, but it doesn't isolate anything, because
+**Valheim partitions the world by XZ and never by height** - `ZDO.SetSector`,
+`ZNetScene.InActiveArea` and `ZDOMan.FindSectorObjects` all reduce a position to
+`ZoneSystem.GetZone`, which discards `y`. An instance parked above a real zone joins that zone's
+sector, so every other player crossing that ground instantiates the whole thing.
+
+So instances get their own zone (isolation) *and* altitude (`Character.InInterior` is a bare
+`y > 3000`, which is what suppresses raids, gives the interior environment, and stops the
+overworld being drawn under the floor). The zone is derived from the instance id by hashing rather
+than allocated from a list, so nothing needs rebuilding after a restart.
+
+### They don't survive a server restart, on purpose
+
+Every ZDO in an instance is marked `Persistent = false`. `ZDOMan.GetSaveClone()` copies only
+persistent ZDOs, so an instance is never written to the world save and cannot outlive the server
+process - and `ZDOMan.RemoveOrphanNonPersistentZDOS()`, which runs on every peer disconnect,
+sweeps anything a departing player owned. That makes instances ephemeral *by construction* rather
+than by remembering to clean up, and it means the "player logged out inside" case is handled by
+code that already ships.
+
+Quest instances, when they exist, will need the opposite and get a persistent surface anchor
+instead. That's designed but not built; see `Instances/DESIGN_NOTES.md`.
+
+### Limits worth knowing
+
+- **Anything left in an instance is lost when it's reaped**, including a tombstone if you die
+  inside. Nothing relocates them yet. This is the first thing to fix before real play.
+- **Occupancy is polled, not counted.** The reaper asks `ZNet.GetPeers()` where everyone is every
+  few seconds; an instance is destroyed 20 s after the last person leaves, or after 5 minutes if
+  nobody ever entered. There is deliberately no enter/exit counter - every way one of those leaks
+  is a lost decrement, and a leaked counter pins the instance open forever.
+- **The exit portal is intercepted.** A dungeon's interior exit points at the location's exterior,
+  which for an instance is a doorway floating 20 km up with nothing under it, so `Teleport.Interact`
+  is patched to send you back where you came from instead. Logging out inside rewrites your logout
+  point for the same reason.
+- **Theme and room-count overrides are written onto the shared location prefab** and restored
+  immediately after, because `SpawnLocation` leaves no window between instantiating the generator
+  and generating. Don't open an instance while a `pregenerateworld` run is in flight.
+- Only locations with a dungeon interior and `Algorithm.Dungeon` can be instanced; surface camps
+  are refused, since they need terrain under them.
 
 ## World pregeneration
 

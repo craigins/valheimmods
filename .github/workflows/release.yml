@@ -15,6 +15,9 @@ env:
   VALHEIM_SERVER_APPID: '896660'
   # Keep in step with tools/install-bepinex.ps1.
   BEPINEX_VERSION: '5.4.2333'
+  # Every DLL that ships in a release, ';'-separated. Both plugins are versioned and released
+  # together, so the version check and the upload both walk this one list.
+  RELEASE_DLLS: 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll;src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll'
 
 jobs:
   build:
@@ -77,36 +80,41 @@ jobs:
           }
           "BEPINEX_CORE=$core" >> $env:GITHUB_ENV
 
+      # The solution, so both plugin DLLs are built - the base mod and the instances plugin,
+      # which are versioned and released together.
       - name: Build
         shell: pwsh
         run: |
-          dotnet build src/CraiginsValheimMod/CraiginsValheimMod.csproj -c Release `
+          dotnet build CraiginsValheimMod.slnx -c Release `
             -p:ValheimManagedDir="$env:VALHEIM_MANAGED" `
             -p:ValheimBepInExCoreDir="$env:BEPINEX_CORE"
 
-      - name: Check the built version matches the tag
+      - name: Check the built versions match the tag
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $tag = '${{ github.ref_name }}'.TrimStart('v')
-          $dll = 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll'
-          $built = [Reflection.AssemblyName]::GetAssemblyName((Resolve-Path $dll)).Version
-          $short = "$($built.Major).$($built.Minor).$($built.Build)"
-          if ($short -ne $tag) {
-            throw "Tag $tag does not match the built assembly version $short - bump Plugin.ModVersion and the csproj <Version> before tagging."
+          foreach ($dll in $env:RELEASE_DLLS -split ';') {
+            $built = [Reflection.AssemblyName]::GetAssemblyName((Resolve-Path $dll)).Version
+            $short = "$($built.Major).$($built.Minor).$($built.Build)"
+            if ($short -ne $tag) {
+              throw "Tag $tag does not match $dll at version $short - bump Plugin.ModVersion, InstancesPlugin.ModVersion and both csproj <Version> elements before tagging."
+            }
+            Write-Host "Tag $tag matches $dll"
           }
-          Write-Host "Tag $tag matches built version $short"
 
       - uses: actions/upload-artifact@v4
         with:
           name: CraiginsValheimMod
-          path: src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll
+          path: |
+            src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll
+            src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll
 
       # Attaches to an existing release if there is one (so hand-written notes are never
       # overwritten), otherwise opens a draft for the notes to be written into. Nothing is
       # ever published automatically.
-      - name: Attach the DLL to the release
+      - name: Attach the DLLs to the release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         env:
@@ -114,15 +122,15 @@ jobs:
         run: |
           $ErrorActionPreference = 'Continue'
           $tag = '${{ github.ref_name }}'
-          $dll = 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll'
+          $dlls = $env:RELEASE_DLLS -split ';'
 
           gh release view $tag 2>&1 | Out-Null
           if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $tag exists - replacing its DLL."
-            gh release upload $tag $dll --clobber
+            Write-Host "Release $tag exists - replacing its DLLs."
+            gh release upload $tag $dlls --clobber
           } else {
             Write-Host "No release for $tag yet - creating a draft to write notes into."
-            gh release create $tag $dll --draft --title "$tag" `
+            gh release create $tag $dlls --draft --title "$tag" `
               --notes "Draft created by CI. Write the notes, then publish."
           }
           if ($LASTEXITCODE -ne 0) { throw "gh release step failed with exit code $LASTEXITCODE" }

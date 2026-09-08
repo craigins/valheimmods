@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <AssemblyName>CraiginsValheimInstances</AssemblyName>
+    <RootNamespace>CraiginsValheimMod.Instances</RootNamespace>
+    <Version>0.4.0</Version>
+    <Product>Craigins Valheim Instances</Product>
+    <Authors>craigins</Authors>
+
+    <!-- Same overrides as the base mod, for the same reason: CI builds against a dedicated
+         server download rather than a game install. See CraiginsValheimMod.csproj. -->
+    <ValheimManagedDir Condition="'$(ValheimManagedDir)' == ''">$(ValheimInstallDir)\valheim_Data\Managed</ValheimManagedDir>
+    <ValheimBepInExCoreDir Condition="'$(ValheimBepInExCoreDir)' == ''">$(ValheimInstallDir)\BepInEx\core</ValheimBepInExCoreDir>
+    <ValheimPluginsDir>$(ValheimInstallDir)\BepInEx\plugins\CraiginsValheimInstances</ValheimPluginsDir>
+
+    <NoWarn>$(NoWarn);MSB3245</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
+    <PackageReference Include="JotunnLib" Version="2.29.2" />
+  </ItemGroup>
+
+  <!-- The base mod is a hard dependency, not a convenience: this plugin builds on its dungeon
+       primitives (DungeonInterior, DungeonReset) and BepInDependency makes BepInEx load it
+       first. Private=false so the base DLL isn't copied next to this one - BepInEx already has
+       it loaded, and a second copy on disk is a second thing to keep in step. -->
+  <ItemGroup>
+    <ProjectReference Include="..\CraiginsValheimMod\CraiginsValheimMod.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="EnsureValheimInstall" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(ValheimManagedDir)')">
+    <Error Text="Could not find a Valheim install at '$(ValheimInstallDir)'. Copy LocalPaths.props.example (repo root) to LocalPaths.props and set ValheimInstallDir to your game folder." />
+  </Target>
+
+  <ItemGroup Condition="Exists('$(ValheimBepInExCoreDir)')">
+    <Reference Include="BepInEx">
+      <HintPath>$(ValheimBepInExCoreDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(ValheimBepInExCoreDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(ValheimManagedDir)')">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ValheimManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Publicize>true</Publicize>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>$(ValheimManagedDir)\assembly_valheim.dll</HintPath>
+      <Publicize>true</Publicize>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ValheimManagedDir)\*.dll" Exclude="$(ValheimManagedDir)\Assembly-CSharp.dll;$(ValheimManagedDir)\assembly_valheim.dll">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToBepInEx" AfterTargets="Build" Condition="Exists('$(ValheimInstallDir)\BepInEx\plugins')">
+    <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ValheimPluginsDir)" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb" DestinationFolder="$(ValheimPluginsDir)" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+  </Target>
+
+</Project>
