@@ -65,7 +65,7 @@ namespace CraiginsValheimMod.Instances
         public int Id;
 
         /// <summary>The zone this instance owns outright. Derived from Id, see InstanceRegion.</summary>
-        public Vector2i Zone;
+        public Vector2s Zone;
 
         /// <summary>Where the location was spawned. Its interior sits 5000 above this.</summary>
         public Vector3 Origin;

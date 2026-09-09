@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>CraiginsValheimInstances</AssemblyName>
     <RootNamespace>CraiginsValheimMod.Instances</RootNamespace>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Product>Craigins Valheim Instances</Product>
     <Authors>craigins</Authors>
 
@@ -20,7 +20,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
-    <PackageReference Include="JotunnLib" Version="2.29.2" />
+    <PackageReference Include="JotunnLib" Version="2.30.0" />
   </ItemGroup>
 
   <!-- The base mod is a hard dependency, not a convenience: this plugin builds on its dungeon

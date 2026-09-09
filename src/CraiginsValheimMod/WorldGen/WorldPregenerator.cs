@@ -141,10 +141,10 @@ namespace CraiginsValheimMod.WorldGen
                     "prefetching is off. Generation still works and stays in order, just slower.");
             }
 
-            var blocked = new List<Vector2i>();
+            var blocked = new List<Vector2s>();
 
             // Pass 1 - settle the once-per-world claims at the closest candidate to spawn.
-            List<Vector2i> claims = BuildUniqueLocationClaims(zoneSystem);
+            List<Vector2s> claims = BuildUniqueLocationClaims(zoneSystem);
             if (claims.Count > 0)
             {
                 ctx.BeginPass("unique locations", claims.Count);
@@ -155,7 +155,7 @@ namespace CraiginsValheimMod.WorldGen
             // zones it just generated drop out via IsZoneGenerated.
             if (!ctx.Aborted)
             {
-                List<Vector2i> ordered = BuildSpiralOrder(zoneSystem, WorldGenerator.worldSize, out int alreadyGenerated);
+                List<Vector2s> ordered = BuildSpiralOrder(zoneSystem, WorldGenerator.worldSize, out int alreadyGenerated);
                 ctx.BeginPass("spiral", ordered.Count);
                 Jotunn.Logger.LogInfo(
                     $"pregenerateworld: {ordered.Count} zones to generate ({alreadyGenerated} already done), " +
@@ -172,13 +172,13 @@ namespace CraiginsValheimMod.WorldGen
             if (!ctx.Aborted && blocked.Count > 0)
             {
                 var retry = blocked;
-                blocked = new List<Vector2i>();
+                blocked = new List<Vector2s>();
                 ctx.BeginPass("retry", retry.Count);
                 Jotunn.Logger.LogInfo($"pregenerateworld: retrying {retry.Count} zone(s) that were set aside earlier.");
                 yield return GeneratePass(ctx, retry, blocked);
             }
 
-            foreach (Vector2i id in blocked)
+            foreach (Vector2s id in blocked)
             {
                 Jotunn.Logger.LogError($"pregenerateworld: zone ({id.x}, {id.y}) never became spawnable and was left ungenerated.");
             }
@@ -195,7 +195,7 @@ namespace CraiginsValheimMod.WorldGen
         /// until it actually spawns. Zones that stay unspawnable past BlockedZoneTimeout are
         /// appended to <paramref name="blockedOut"/> and skipped.
         /// </summary>
-        private static IEnumerator GeneratePass(PassContext ctx, List<Vector2i> zones, List<Vector2i> blockedOut)
+        private static IEnumerator GeneratePass(PassContext ctx, List<Vector2s> zones, List<Vector2s> blockedOut)
         {
             int cursor = 0;
             int consecutiveBlocked = 0;
@@ -231,7 +231,7 @@ namespace CraiginsValheimMod.WorldGen
                 }
                 else if (blockedSince.Elapsed >= BlockedZoneTimeout)
                 {
-                    Vector2i stuck = zones[cursor];
+                    Vector2s stuck = zones[cursor];
                     blockedOut.Add(stuck);
                     cursor++;
                     blockedSince.Reset();
@@ -269,7 +269,7 @@ namespace CraiginsValheimMod.WorldGen
                 if (ctx.Clock.Elapsed >= ctx.NextLog)
                 {
                     ctx.NextLog += TimeSpan.FromSeconds(10);
-                    Vector2i at = zones[Mathf.Min(cursor, zones.Count - 1)];
+                    Vector2s at = zones[Mathf.Min(cursor, zones.Count - 1)];
                     Jotunn.Logger.LogInfo(
                         $"pregenerateworld [{ctx.Label}]: {ctx.PassGenerated}/{ctx.PassTotal} generated, " +
                         $"currently {ZoneSystem.GetZonePos(at).magnitude:0}m from the origin, " +
@@ -280,7 +280,7 @@ namespace CraiginsValheimMod.WorldGen
             }
         }
 
-        private static void PrefetchTerrain(PassContext ctx, List<Vector2i> zones, int from, int count)
+        private static void PrefetchTerrain(PassContext ctx, List<Vector2s> zones, int from, int count)
         {
             if (count <= 0 || ctx.ZonePrefabHeightmap == null)
             {
@@ -317,11 +317,11 @@ namespace CraiginsValheimMod.WorldGen
         /// never compete with each other (RemoveUnplacedLocations is per-ZoneLocation), so the
         /// order among these few zones doesn't actually matter - it's sorted anyway for tidiness.
         /// </summary>
-        private static List<Vector2i> BuildUniqueLocationClaims(ZoneSystem zoneSystem)
+        private static List<Vector2s> BuildUniqueLocationClaims(ZoneSystem zoneSystem)
         {
             var nearest = new Dictionary<ZoneSystem.ZoneLocation, SpiralEntry>();
 
-            foreach (KeyValuePair<Vector2i, ZoneSystem.LocationInstance> pair in zoneSystem.m_locationInstances)
+            foreach (KeyValuePair<Vector2s, ZoneSystem.LocationInstance> pair in zoneSystem.m_locationInstances)
             {
                 ZoneSystem.LocationInstance instance = pair.Value;
                 if (instance.m_placed || instance.m_location == null || !instance.m_location.m_unique)
@@ -359,7 +359,7 @@ namespace CraiginsValheimMod.WorldGen
                     "candidate zone, before the bulk pass, in this order:");
             }
 
-            var ordered = new List<Vector2i>(claims.Count);
+            var ordered = new List<Vector2s>(claims.Count);
             foreach (KeyValuePair<string, SpiralEntry> claim in claims)
             {
                 Jotunn.Logger.LogInfo(
@@ -375,7 +375,7 @@ namespace CraiginsValheimMod.WorldGen
         /// centre distance from the origin, ties broken by angle - i.e. a spiral outward from
         /// the middle of the map.
         /// </summary>
-        private static List<Vector2i> BuildSpiralOrder(ZoneSystem zoneSystem, float radius, out int alreadyGenerated)
+        private static List<Vector2s> BuildSpiralOrder(ZoneSystem zoneSystem, float radius, out int alreadyGenerated)
         {
             int range = Mathf.CeilToInt(radius / zoneSystem.m_zoneSize);
             alreadyGenerated = 0;
@@ -385,7 +385,7 @@ namespace CraiginsValheimMod.WorldGen
             {
                 for (int x = -range; x <= range; x++)
                 {
-                    var id = new Vector2i(x, y);
+                    var id = new Vector2s(x, y);
                     if (ZoneSystem.GetZonePos(id).magnitude >= radius)
                     {
                         continue;
@@ -401,7 +401,7 @@ namespace CraiginsValheimMod.WorldGen
 
             pending.Sort(SpiralComparison);
 
-            var ordered = new List<Vector2i>(pending.Count);
+            var ordered = new List<Vector2s>(pending.Count);
             foreach (SpiralEntry entry in pending)
             {
                 ordered.Add(entry.Id);
@@ -409,7 +409,7 @@ namespace CraiginsValheimMod.WorldGen
             return ordered;
         }
 
-        private static SpiralEntry MakeEntry(Vector2i id)
+        private static SpiralEntry MakeEntry(Vector2s id)
         {
             return new SpiralEntry
             {
@@ -433,7 +433,9 @@ namespace CraiginsValheimMod.WorldGen
         {
             int peers = ZNet.instance.GetPeers().Count;
             Vector3 refPos = ZNet.instance.GetReferencePosition();
-            float localArea = zoneSystem.m_zoneSize * (zoneSystem.m_activeArea + zoneSystem.m_activeDistantArea);
+            // 1.0 replaced the m_activeArea/m_activeDistantArea int pair with a single
+            // SimulationDistance struct; TotalSimulationDistance is the sum those two used to be.
+            float localArea = zoneSystem.m_zoneSize * zoneSystem.m_simulationDistance.TotalSimulationDistance;
 
             if (peers == 0 && refPos.magnitude <= localArea)
             {
@@ -453,7 +455,7 @@ namespace CraiginsValheimMod.WorldGen
 
         private struct SpiralEntry
         {
-            public Vector2i Id;
+            public Vector2s Id;
             public int Dist2;
             public float Angle;
         }

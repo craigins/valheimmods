@@ -40,7 +40,7 @@ namespace CraiginsValheimMod.Dungeons
         /// </summary>
         private const float InteriorBandHalfHeight = 250f;
 
-        public static Vector2i ZoneOf(DungeonGenerator dungeon)
+        public static Vector2s ZoneOf(DungeonGenerator dungeon)
         {
             return ZoneSystem.GetZone(dungeon.transform.position);
         }
@@ -91,7 +91,10 @@ namespace CraiginsValheimMod.Dungeons
             preserved = 0;
 
             var sector = new List<ZDO>();
-            ZDOMan.instance.FindSectorObjects(ZoneOf(dungeon), 0, 0, sector);
+            // SimulationDistance(0, 0) is 1.0's spelling of the old (area: 0, distantArea: 0):
+            // both of FindSectorObjects' ring loops start at 1, so a zero distance visits the
+            // dungeon's own sector and nothing else.
+            ZDOMan.instance.FindSectorObjects(ZoneOf(dungeon), new SimulationDistance(0, 0), sector);
 
             ZDO self = GetZdo(dungeon);
             foreach (ZDO zdo in sector)

@@ -59,7 +59,7 @@ namespace CraiginsValheimMod.Dungeons
             public bool WipePlayerBuilt;
             public string Name;
             public bool HaveZone;
-            public Vector2i Zone;
+            public Vector2s Zone;
             public bool HaveSeed;
             public int Seed;
         }
@@ -194,7 +194,7 @@ namespace CraiginsValheimMod.Dungeons
                      "(dedicated server). Pick one explicitly with zone=<x>,<z>:";
             foreach (DungeonGenerator dungeon in candidates)
             {
-                Vector2i zone = DungeonInterior.ZoneOf(dungeon);
+                Vector2s zone = DungeonInterior.ZoneOf(dungeon);
                 reason += $"\n  zone={zone.x},{zone.y}  {LocationName(dungeon) ?? "?"}";
             }
             return null;
@@ -293,7 +293,7 @@ namespace CraiginsValheimMod.Dungeons
                 Print($"resetdungeon: {loaded.Count} loaded dungeon(s) - these can be reset right now:");
                 foreach (DungeonGenerator dungeon in loaded)
                 {
-                    Vector2i zone = DungeonInterior.ZoneOf(dungeon);
+                    Vector2s zone = DungeonInterior.ZoneOf(dungeon);
                     int rooms = DungeonInterior.GetSavedRoomCount(dungeon);
                     string dist = haveRef ? $"  {Utils.DistanceXZ(from, dungeon.transform.position):0}m away" : "";
                     Print($"  zone={zone.x},{zone.y}  {LocationName(dungeon) ?? dungeon.name}  " +
@@ -327,7 +327,7 @@ namespace CraiginsValheimMod.Dungeons
             for (int i = 0; i < world.Count && i < Limit; i++)
             {
                 ZoneSystem.LocationInstance instance = world[i];
-                Vector2i zone = ZoneSystem.GetZone(instance.m_position);
+                Vector2s zone = ZoneSystem.GetZone(instance.m_position);
                 Print($"  zone={zone.x},{zone.y}  {DungeonReset.LocationName(instance.m_location)}  " +
                       $"at ({instance.m_position.x:0}, {instance.m_position.z:0})  " +
                       $"{Utils.DistanceXZ(from, instance.m_position):0}m" +
@@ -399,7 +399,7 @@ namespace CraiginsValheimMod.Dungeons
                         error = $"couldn't read zone coordinates from '{arg}' - expected zone=<x>,<z> with no spaces, e.g. zone=12,-34.";
                         return false;
                     }
-                    opts.Zone = new Vector2i(x, y);
+                    opts.Zone = new Vector2s(x, y);
                     opts.HaveZone = true;
                 }
                 else

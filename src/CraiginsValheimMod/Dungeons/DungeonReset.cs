@@ -45,7 +45,7 @@ namespace CraiginsValheimMod.Dungeons
             return found;
         }
 
-        public static DungeonGenerator FindLoadedInZone(Vector2i zone)
+        public static DungeonGenerator FindLoadedInZone(Vector2s zone)
         {
             foreach (DungeonGenerator dungeon in FindLoaded())
             {
@@ -75,7 +75,7 @@ namespace CraiginsValheimMod.Dungeons
 
         public static string Describe(DungeonGenerator dungeon)
         {
-            Vector2i zone = DungeonInterior.ZoneOf(dungeon);
+            Vector2s zone = DungeonInterior.ZoneOf(dungeon);
             return $"'{LocationName(dungeon) ?? dungeon.name}' in zone ({zone.x}, {zone.y})";
         }
 

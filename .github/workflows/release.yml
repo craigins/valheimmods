@@ -14,7 +14,7 @@ env:
   # the client does - which is what the mod actually references.
   VALHEIM_SERVER_APPID: '896660'
   # Keep in step with tools/install-bepinex.ps1.
-  BEPINEX_VERSION: '5.4.2333'
+  BEPINEX_VERSION: '5.4.2350'
   # Every DLL that ships in a release, ';'-separated. Both plugins are versioned and released
   # together, so the version check and the upload both walk this one list.
   RELEASE_DLLS: 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll;src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll'

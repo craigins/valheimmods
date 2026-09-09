@@ -124,7 +124,7 @@ namespace CraiginsValheimMod.Dungeons
                 return Heightmap.Biome.None;
             }
 
-            Vector2i zone = ZoneSystem.GetZone(position);
+            Vector2s zone = ZoneSystem.GetZone(position);
             if (ZoneSystem.instance != null
                 && ZoneSystem.instance.m_locationInstances.TryGetValue(zone, out ZoneSystem.LocationInstance instance))
             {

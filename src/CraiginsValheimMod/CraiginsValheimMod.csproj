@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>CraiginsValheimMod</AssemblyName>
     <RootNamespace>CraiginsValheimMod</RootNamespace>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Product>Craigins Valheim Mod</Product>
     <Authors>craigins</Authors>
 
@@ -32,7 +32,7 @@
          so Harmony patches and Jotunn can see everything without editing the game's DLL on disk. -->
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
     <!-- Valheim modding library: custom items/pieces/recipes, RPC helpers, config sync, dialogs, etc. -->
-    <PackageReference Include="JotunnLib" Version="2.29.2" />
+    <PackageReference Include="JotunnLib" Version="2.30.0" />
   </ItemGroup>
 
   <Target Name="EnsureValheimInstall" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(ValheimManagedDir)')">

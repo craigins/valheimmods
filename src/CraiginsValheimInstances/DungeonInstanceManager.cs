@@ -65,7 +65,7 @@ namespace CraiginsValheimMod.Instances
             return _instances.TryGetValue(id, out instance) ? instance : null;
         }
 
-        public static DungeonInstance ForZone(Vector2i zone)
+        public static DungeonInstance ForZone(Vector2s zone)
         {
             foreach (DungeonInstance instance in _instances.Values)
             {
@@ -135,7 +135,7 @@ namespace CraiginsValheimMod.Instances
                 }
 
                 int id = _nextId++;
-                Vector2i zone = InstanceRegion.ZoneFor(id, z => ForZone(z) != null);
+                Vector2s zone = InstanceRegion.ZoneFor(id, z => ForZone(z) != null);
                 Vector3 origin = InstanceRegion.OriginFor(zone);
                 int seed = request.Seed != 0 ? request.Seed : NewSeed();
 
@@ -251,7 +251,7 @@ namespace CraiginsValheimMod.Instances
 
             var doomed = new List<ZDO>();
             var sector = new List<ZDO>();
-            ZDOMan.instance.FindSectorObjects(instance.Zone, 0, 0, sector);
+            ZDOMan.instance.FindSectorObjects(instance.Zone, new SimulationDistance(0, 0), sector);
             foreach (ZDO zdo in sector)
             {
                 if (zdo != null && zdo.GetPosition().y > InstanceRegion.InteriorFloor)
@@ -483,10 +483,10 @@ namespace CraiginsValheimMod.Instances
         /// The flag is only set locally and isn't pushed as a data revision. That's sufficient
         /// because both behaviours above are server-side, and the server is what saves.
         /// </summary>
-        private static int MarkEphemeral(Vector2i zone)
+        private static int MarkEphemeral(Vector2s zone)
         {
             var sector = new List<ZDO>();
-            ZDOMan.instance.FindSectorObjects(zone, 0, 0, sector);
+            ZDOMan.instance.FindSectorObjects(zone, new SimulationDistance(0, 0), sector);
 
             int marked = 0;
             foreach (ZDO zdo in sector)

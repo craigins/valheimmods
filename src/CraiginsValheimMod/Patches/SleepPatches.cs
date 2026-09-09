@@ -23,8 +23,13 @@ namespace CraiginsValheimMod.Patches
                     return;
                 }
 
+                // The CinematicsManager check mirrors one Valheim 1.0 added to UpdateSleeping
+                // itself. This postfix re-implements vanilla's trigger with the "is it night"
+                // gate removed, so any *other* guard vanilla grows has to be copied here too or
+                // we'd skip to morning in a situation the game deliberately refuses to.
                 if (!__instance.m_sleeping
                     && !EnvMan.instance.IsTimeSkipping()
+                    && !CinematicsManager.IsPlaying()
                     && (bool)EverybodyIsTryingToSleep.Invoke(__instance, null))
                 {
                     EnvMan.instance.SkipToMorning();

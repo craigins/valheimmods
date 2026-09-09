@@ -32,8 +32,8 @@
    directly (Steam's play button works too now that BepInEx is installed) and confirm:
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
-   - The log shows `Craigins Valheim Mod v0.5.0 loaded` and Jotunn initializing (plus
-     `Craigins Valheim Instances v0.5.0 loaded` if that second plugin DLL is installed too).
+   - The log shows `Craigins Valheim Mod v0.6.0 loaded` and Jotunn initializing (plus
+     `Craigins Valheim Instances v0.6.0 loaded` if that second plugin DLL is installed too).
    - In the Mistlands: terrain reads as smoother than vanilla, and ground mist is gone. I
      verified the patches compile and target the right methods/fields, but I have no way to
      confirm the in-game *effect* still looks right after however many game updates since you
@@ -66,9 +66,10 @@
 6. ~~**Test `pregenerateworld` on a copy of your world before trusting it for real.**~~ Done
    2026-09-04: a full run completed cleanly, 76,470 zones in 1h47m, through the final save.
    Still copy your world's `.db`/`.fwl` files somewhere safe before running it for real - the
-   generation it bakes in is one-way - and note the run above was on the pre-1.0 build, so the
-   real pregeneration still waits for the 1.0 patch (2026-09-09) and a re-verification of every
-   patch target against the new `assembly_valheim.dll`.
+   generation it bakes in is one-way. The run above was on the pre-1.0 build; 1.0 has since
+   shipped (game version 1.0.7) and every patch target was re-verified against the new
+   `assembly_valheim.dll` on 2026-09-09, so the only thing still standing between here and a
+   real pregeneration run is an in-game re-test on 1.0.
 
 7. **Figure out where this mod needs to be installed to actually run `pregenerateworld` against
    your dedicated server's world.** BepInEx was only installed into the regular game client -

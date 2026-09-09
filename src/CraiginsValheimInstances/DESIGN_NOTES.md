@@ -35,9 +35,23 @@ So instances go in **their own XZ zone, at altitude**. XZ for isolation, altitud
 
 ## 2. Address space
 
-Instances live in a square region of zones far outside the +-10,500 m playable circle. Zones are
-64 m and `ZoneSystem` has no bound on zone coordinates - `SpawnZone` takes any `Vector2i` - so
-this region is free real estate.
+Instances live in a square region of zones just outside the +-10,500 m playable circle, at zones
+176-255 on both axes.
+
+**There is a hard ceiling on how far out that region may sit, and it is easy to miss.** Before
+Valheim 1.0 there was none - zone IDs were `Vector2i` and sectors were keyed by the raw pair, so
+the region sat at zone 2000 on the "further away is safer" theory. 1.0 replaced zone IDs with
+`Vector2s` and, more importantly, started addressing sectors through
+`ZoneSystem.SectorToIndex`, which packs a zone into one uint as `(y + 256) * 512 + (x + 256)`
+and returns **index 0 for anything outside +-256**. Index 0 is `SectorZero`, the sentinel
+`ZDO.SetSector` stamps on out-of-bounds objects (`OutsideZones = sectorIndex.Sector == 0`). A
+region at zone 2000 therefore puts every instance in one shared sector alongside every genuinely
+out-of-bounds ZDO in the world - destroying the isolation property in section 1 that the whole
+design rests on, and handing the reaper other people's objects via `FindSectorObjects`.
+
+So the region is bounded on both sides: past zone ~164 to clear the playable world, and inside
+zone 256 to stay addressable. Zones 176-255 satisfy both with ~750 m of margin at the world edge.
+`InstanceRegion.RegionOrigin + RegionSize` must stay `<= 256`; nothing fails loudly if it doesn't.
 
 **The zone is derived from the instance id, not allocated from a list.**
 
@@ -48,7 +62,7 @@ zone = regionOrigin + hash(instanceId) mod regionSize, linear probe on collision
 A free-list would have to be rebuilt at every server start by scanning for live instances. A
 derived mapping is stateless: the same id lands in the same zone forever, and the only question
 ever asked is "does a live instance already claim this zone", which the instance record answers.
-With a 256 x 256 region that is 65,536 slots against a handful of concurrent instances, so the
+With an 80 x 80 region that is 6,400 slots against a handful of concurrent instances, so the
 probe effectively never runs.
 
 Altitude is a single constant well above the vanilla interior band at `location.y + 5000`. Above

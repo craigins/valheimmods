@@ -186,11 +186,14 @@ namespace CraiginsValheimMod.Dungeons
 
             // The zone is the whole address: interiors sit directly above their entrance in XZ,
             // so the entrance's zone is the dungeon's zone.
-            Vector2i zone = ZoneSystem.GetZone(entrance.transform.position);
+            Vector2s zone = ZoneSystem.GetZone(entrance.transform.position);
 
             _requestSentAt = Time.time;
             _pendingItemName = item.m_shared.m_name;
-            ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequest, zone.x, zone.y);
+            // Cast explicitly: zone coords are shorts since 1.0, but ZRoutedRpc serialises
+            // arguments by their static type and OnResetRequested is registered as taking ints,
+            // so passing the shorts straight through would write a payload it can't read back.
+            ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequest, (int)zone.x, (int)zone.y);
         }
 
         // ---- RPC handlers ----------------------------------------------------------------
@@ -208,7 +211,7 @@ namespace CraiginsValheimMod.Dungeons
                 return;
             }
 
-            var zone = new Vector2i(zoneX, zoneY);
+            var zone = new Vector2s(zoneX, zoneY);
             DungeonGenerator dungeon = DungeonReset.FindLoadedInZone(zone);
             if (dungeon == null)
             {
