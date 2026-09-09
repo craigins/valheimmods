@@ -1,8 +1,11 @@
 # What's done vs. what needs you
 
 ## Done
-- BepInEx 5.4.2333 (`denikson-BepInExPack_Valheim`) installed into the vanilla game install
-  named by `ValheimInstallDir` in `LocalPaths.props`.
+- BepInEx 5.4.2350 (`denikson-BepInExPack_Valheim`) and Jotunn 2.30.0
+  (`ValheimModding-Jotunn`) installed into the vanilla game install named by
+  `ValheimInstallDir` in `LocalPaths.props`, via `tools/install-bepinex.ps1` and
+  `tools/install-jotunn.ps1`. Both are runtime installs and are separate from the NuGet
+  reference the build uses - installing one machine does not install another.
 - Project scaffolded: BepInEx plugin + Jotunn library, referencing that local game install
   and auto-publicizing `Assembly-CSharp.dll` at build time (no game files copied into the
   repo).

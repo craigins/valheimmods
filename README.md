@@ -117,6 +117,24 @@ This does three things automatically, using the path from `LocalPaths.props`:
    to test on next launch - `CraiginsValheimMod/` and `CraiginsValheimInstances/`.
 
 `dotnet build` at the repo root builds both projects (they're both in `CraiginsValheimMod.slnx`).
+
+**Jotunn has to be installed into the game separately.** The `JotunnLib` NuGet reference is
+compile-time only - it does not put `Jotunn.dll` anywhere BepInEx will find it. Miss this step
+and the mod builds and deploys perfectly but never loads:
+
+```
+Could not load [Craigins Valheim Mod x.y.z] because it has missing dependencies: com.jotunn.jotunn
+```
+
+```
+./tools/install-bepinex.ps1 -ValheimPath "<your Valheim folder>"
+./tools/install-jotunn.ps1  -ValheimPath "<your Valheim folder>"
+```
+
+Keep the `-Version` default in `tools/install-jotunn.ps1` in step with the `JotunnLib`
+`<PackageReference>` in both csproj files - a runtime Jotunn older than the one built against
+will fail at a missing method rather than at load.
+
 Build one on its own by naming its csproj. Installing is the same idea: copy
 `CraiginsValheimMod.dll` into `BepInEx/plugins/`, and add `CraiginsValheimInstances.dll` next to
 it only if you want instanced dungeons. The instances plugin declares a BepInEx dependency on the
