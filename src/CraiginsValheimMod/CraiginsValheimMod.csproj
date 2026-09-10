@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>CraiginsValheimMod</AssemblyName>
     <RootNamespace>CraiginsValheimMod</RootNamespace>
-    <Version>0.6.1</Version>
+    <Version>0.6.2</Version>
     <Product>Craigins Valheim Mod</Product>
     <Authors>craigins</Authors>
 

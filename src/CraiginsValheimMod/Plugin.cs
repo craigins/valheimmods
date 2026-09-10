@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.1";
+        public const string ModVersion = "0.6.2";
 
         public static Plugin Instance { get; private set; }
 

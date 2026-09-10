@@ -38,8 +38,8 @@
    directly (Steam's play button works too now that BepInEx is installed) and confirm:
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
-   - The log shows `Craigins Valheim Mod v0.6.1 loaded` and Jotunn initializing (plus
-     `Craigins Valheim Instances v0.6.1 loaded` / `Craigins Valheim Stargate v0.6.1 loaded` if
+   - The log shows `Craigins Valheim Mod v0.6.2 loaded` and Jotunn initializing (plus
+     `Craigins Valheim Instances v0.6.2 loaded` / `Craigins Valheim Stargate v0.6.2 loaded` if
      those plugin DLLs are installed too).
    - In the Mistlands: terrain reads as smoother than vanilla, and ground mist is gone. I
      verified the patches compile and target the right methods/fields, but I have no way to
