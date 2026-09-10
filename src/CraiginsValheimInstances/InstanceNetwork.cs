@@ -33,6 +33,13 @@ namespace CraiginsValheimMod.Instances
         /// <summary>
         /// ZRoutedRpc is constructed in ZNet, so registration can't happen at plugin load.
         /// Game.Start runs once the net layer is up, on both client and dedicated server.
+        ///
+        /// KNOWN BUG, NOT YET FIXED: ZNet.Awake builds a brand-new ZRoutedRpc for every world
+        /// joined, but _registered is a static bool that is never reset. Leave a world and join
+        /// another (or the same one) without restarting the game, and the new ZRoutedRpc never gets
+        /// these handlers - requests go out and nothing answers. Dedicated servers are unaffected
+        /// (one world per process); clients and hosts are. Fix: remember the ZRoutedRpc instance
+        /// registered on instead of a bool, as StargateNetwork does.
         /// </summary>
         [HarmonyPatch(typeof(Game), "Start")]
         private static class Game_Start_Patch
