@@ -9,7 +9,7 @@ heightmap and bypass terrain generation entirely. That was rejected — see
 [Why not a full external heightmap](#appendix-why-not-a-full-external-heightmap) at the bottom
 for what it would have cost. This document is about the biome-only version.
 
-Unlike `Stargate/DESIGN_NOTES.md`, everything below **is** verified against the current
+Everything below is verified against the current
 decompiled `assembly_valheim.dll` (2026-02-19 build, via ILSpy). Line numbers are from that
 decompile and will drift; class and method names are the durable part. Re-check after a game
 update, the same way `TerrainMaskPatches` documents its provenance.

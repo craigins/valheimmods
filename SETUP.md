@@ -16,7 +16,10 @@
   `Patches/AtmospherePatches.cs`, after verifying every patch target (method signatures,
   fields) still matches the current `assembly_valheim.dll` byte-for-byte in structure. Both
   are wired up to config toggles and should be ready to test.
-- Design notes (not code) for the Stargate portal idea in `Stargate/DESIGN_NOTES.md`.
+- Stargates, as a third plugin DLL (`src/CraiginsValheimStargate/`): buildable addressable
+  portals you dial by address, with links that hold until disconnected or displaced by an
+  incoming dial. Design verified against 1.0.7 in that folder's `DESIGN_NOTES.md`. Not yet
+  tested in-game.
 - `pregenerateworld` console command (`WorldGen/`) - force-generates the whole map instead of
   lazy per-zone generation, for porting a fully-generated world (with the Mistlands terrain
   patch already baked in) to your dedicated server. Generates centre-outward so once-per-world
@@ -36,7 +39,8 @@
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
    - The log shows `Craigins Valheim Mod v0.6.1 loaded` and Jotunn initializing (plus
-     `Craigins Valheim Instances v0.6.1 loaded` if that second plugin DLL is installed too).
+     `Craigins Valheim Instances v0.6.1 loaded` / `Craigins Valheim Stargate v0.6.1 loaded` if
+     those plugin DLLs are installed too).
    - In the Mistlands: terrain reads as smoother than vanilla, and ground mist is gone. I
      verified the patches compile and target the right methods/fields, but I have no way to
      confirm the in-game *effect* still looks right after however many game updates since you
@@ -56,9 +60,11 @@
    `src/CraiginsValheimMod/obj/Debug/publicized/assembly_valheim.dll` after your first
    `dotnet build` (that's where most gameplay types actually live - not `Assembly-CSharp.dll`).
 
-4. **Stargate portals** - genuinely a multi-session feature (new networked state, RPCs, custom
-   UI). `Stargate/DESIGN_NOTES.md` has a starting architecture sketch, deliberately not code -
-   say the word when you want to start building it and we can go class by class.
+4. **Test stargates.** Copy `CraiginsValheimStargate.dll` to the server and every client, build
+   two or three gates (hammer menu, "Stargate"), and check: a dialed link still holds after 10+
+   seconds; a third gate dialing in drops the old link on both old ends; a link survives a
+   server restart; dialing a gate nobody is near works. The README's **Stargates** section has
+   the controls.
 
 5. **Thunderstore/Nexus publishing**, whenever you're ready to share the mod more widely.
    GitHub Releases already covers "here's a DLL you can download"; Thunderstore is what gets

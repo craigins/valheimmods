@@ -4,9 +4,10 @@ BepInEx + Jotunn mod project for Valheim.
 
 ## Layout
 
-Two plugins, built from one repo and released together: `CraiginsValheimMod.dll` (everything
-below) and `CraiginsValheimInstances.dll` (instanced dungeons only). The instances plugin
-depends on the base mod; the base mod knows nothing about it, so it runs fine alone.
+Three plugins, built from one repo and released together: `CraiginsValheimMod.dll` (everything
+below), `CraiginsValheimInstances.dll` (instanced dungeons only) and `CraiginsValheimStargate.dll`
+(addressable portals only). The instances plugin depends on the base mod; the stargate plugin
+depends on nothing but Jotunn; the base mod knows about neither, so it runs fine alone.
 
 - `src/CraiginsValheimMod/` - the mod itself.
   - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
@@ -82,10 +83,7 @@ depends on the base mod; the base mod knows nothing about it, so it runs fine al
   - `WorldGen/` - `pregenerateworld` console command, plus the ghost-zone suppression patch it
     relies on. See **World pregeneration** below. Also `WorldGen/DESIGN_NOTES.md` - notes on
     feeding an authored biome map into world generation instead of the game's own biome noise.
-    Not implemented, but unlike the Stargate notes these *are* verified against the current
-    decompiled `assembly_valheim.dll`.
-  - `Stargate/DESIGN_NOTES.md` - notes on the addressable-portal ("Stargate") feature.
-    Not implemented - a bigger feature to tackle separately.
+    Not implemented, but verified against the decompiled `assembly_valheim.dll`.
 - `src/CraiginsValheimInstances/` - a **second plugin DLL**: temporary instanced dungeons,
   procedurally generated copies that live in their own zone far outside the map, are entered by
   teleport, and are destroyed once everyone leaves. See **Instanced dungeons** below, and
@@ -94,6 +92,12 @@ depends on the base mod; the base mod knows nothing about it, so it runs fine al
   `DungeonInstanceManager.cs` the server-side spawn/poll/reap, `InstanceNetwork.cs` the
   client/server split, `InstanceTeleportPatches.cs` the exit and logout safety nets, and
   `DungeonInstanceCommand.cs` the console command.
+- `src/CraiginsValheimStargate/` - a **third plugin DLL**: stargates, buildable portals with a
+  fixed address that you dial instead of tagging. See **Stargates** below, and `DESIGN_NOTES.md`
+  in that folder for how it sits on vanilla portal machinery (verified against 1.0.7).
+  `StargatePlugin.cs` is its entry point, `StargatePiece.cs` the piece and the patches that keep
+  gates out of vanilla pairing, `StargateAddress.cs` the addressing, `StargateNetwork.cs` the
+  server-side dialing, `StargatePatches.cs` the hover text and interaction.
 - `docs/GAME_CONSTANTS.md` - world extent, player movement, equipment modifiers and boat
   physics values extracted from the game (2026-02-19 build), plus how to re-extract them.
   Prefab-serialized tuning values are **not** in the DLL, so a decompiler alone gives wrong
@@ -117,9 +121,10 @@ This does three things automatically, using the path from `LocalPaths.props`:
    in `assembly_valheim.dll` - `Assembly-CSharp.dll` itself is nearly empty (~23KB). Patch
    targets are almost always in `assembly_valheim`.
 3. Copies each built DLL + PDB into `<Valheim>/BepInEx/plugins/<plugin name>/` so it's ready
-   to test on next launch - `CraiginsValheimMod/` and `CraiginsValheimInstances/`.
+   to test on next launch - `CraiginsValheimMod/`, `CraiginsValheimInstances/` and
+   `CraiginsValheimStargate/`.
 
-`dotnet build` at the repo root builds both projects (they're both in `CraiginsValheimMod.slnx`).
+`dotnet build` at the repo root builds all three projects (they're all in `CraiginsValheimMod.slnx`).
 
 **Jotunn has to be installed into the game separately.** The `JotunnLib` NuGet reference is
 compile-time only - it does not put `Jotunn.dll` anywhere BepInEx will find it. Miss this step
@@ -135,27 +140,29 @@ Could not load [Craigins Valheim Mod x.y.z] because it has missing dependencies:
 ```
 
 Keep the `-Version` default in `tools/install-jotunn.ps1` in step with the `JotunnLib`
-`<PackageReference>` in both csproj files - a runtime Jotunn older than the one built against
+`<PackageReference>` in every csproj - a runtime Jotunn older than the one built against
 will fail at a missing method rather than at load.
 
 Build one on its own by naming its csproj. Installing is the same idea: copy
 `CraiginsValheimMod.dll` into `BepInEx/plugins/`, and add `CraiginsValheimInstances.dll` next to
-it only if you want instanced dungeons. The instances plugin declares a BepInEx dependency on the
-base mod, so it refuses to load without it rather than half-working.
+it only if you want instanced dungeons, `CraiginsValheimStargate.dll` only if you want stargates.
+The instances plugin declares a BepInEx dependency on the base mod, so it refuses to load without
+it rather than half-working. The stargate plugin needs only Jotunn.
 
 ## Releasing
 
-Both plugins are versioned and released together, so bump the version in five places -
-`Plugin.ModVersion`, `InstancesPlugin.ModVersion`, both csproj `<Version>`s, and the log line
-quoted in `SETUP.md` - then tag and push:
+All three plugins are versioned and released together, so bump the version in seven places -
+`Plugin.ModVersion`, `InstancesPlugin.ModVersion`, `StargatePlugin.ModVersion`, all three csproj
+`<Version>`s, and the log line quoted in `SETUP.md` - then tag and push:
 
 ```
 git tag -a v0.5.0 -m "..."
 git push origin main --follow-tags
 ```
 
-`.github/workflows/release.yml` builds Release on a runner and attaches both
-`CraiginsValheimMod.dll` and `CraiginsValheimInstances.dll` to the release. If a release for that
+`.github/workflows/release.yml` builds Release on a runner and attaches
+`CraiginsValheimMod.dll`, `CraiginsValheimInstances.dll` and `CraiginsValheimStargate.dll` to the
+release. If a release for that
 tag already exists it just replaces the DLLs, so hand-written notes are never overwritten; if
 not, it opens a **draft** to write notes into. Nothing is ever published automatically. A tag
 whose version doesn't match either built assembly fails the build rather than shipping a
@@ -398,6 +405,38 @@ instead. That's designed but not built; see `Instances/DESIGN_NOTES.md`.
   and generating. Don't open an instance while a `pregenerateworld` run is in flight.
 - Only locations with a dungeon interior and `Algorithm.Dungeon` can be instanced; surface camps
   are refused, since they need terrain under them.
+
+## Stargates
+
+A buildable portal (hammer menu, same recipe as the wooden portal) with a fixed six-symbol
+address instead of a tag. **Untested in-game.** Ships as its own plugin,
+`CraiginsValheimStargate.dll`, which needs only Jotunn. Every client needs it as well as the
+server, since it adds a piece.
+
+```
+[E]        Dial        - type another gate's address, e.g. ABC-DEF
+[Shift+E]  Disconnect  - from either end of a link
+```
+
+- **Links don't time out.** Two dialed gates stay linked until either end disconnects.
+- **An incoming connection wins.** If a third gate dials one of them, that gate drops its old link,
+  and the gate it was linked to goes idle too. So a timer never has to run on a gate that nobody
+  has loaded.
+- **Addresses are learned by visiting.** Hovering a gate shows its address. `stargate list` (needs
+  `devcommands`) prints every gate in the world with its link.
+- **Dialing works across the map.** The server holds every gate's ZDO, so it can link a gate that
+  nobody is anywhere near.
+
+Gates are vanilla portals in all but pairing. Each link is stored in the same ZDO connection a
+portal uses, so walking through, the item rules, the glow and persistence across restarts are
+the game's own code. Vanilla's 5-second tag-pairing loop is patched to skip gates, because
+otherwise it would tear every dialed link down. An address is a hash of the gate's position,
+computed on demand, so nothing is stored and it never changes while the gate stands. See
+`src/CraiginsValheimStargate/DESIGN_NOTES.md` for the engine details and what isn't built yet (a
+real dialer, event-horizon visuals, an iris, instanced-dungeon addresses).
+
+**Deconstruct gates before removing the plugin.** Their ZDOs sit in the world's portal list, and
+without the plugin vanilla would try to pair them with untagged portals.
 
 ## World pregeneration
 

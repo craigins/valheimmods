@@ -2,5 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/CraiginsValheimMod/CraiginsValheimMod.csproj" />
     <Project Path="src/CraiginsValheimInstances/CraiginsValheimInstances.csproj" />
+    <Project Path="src/CraiginsValheimStargate/CraiginsValheimStargate.csproj" />
   </Folder>
 </Solution>
