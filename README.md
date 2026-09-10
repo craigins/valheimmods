@@ -16,12 +16,15 @@ depends on the base mod; the base mod knows nothing about it, so it runs fine al
     `assembly_valheim.dll`:
     - `TerrainMaskPatches.cs` - Mistlands terrain generation using the smoother base-height
       algorithm instead of its own craggy mask. Only the removed `DUtils` noise helper needed
-      swapping (for `Mathf`); everything else matched exactly.
-    - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). **Wisp
+      swapping (for `Mathf`); everything else matched exactly. Off by default
+      (`SmoothMistlandsTerrain`).
+    - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). Off by
+      default (`RemoveMistlandsFog`). **Wisp
       light radius has no implementation** - no source for it was found in the archive, so it
       still needs to be built (or found) from scratch.
-    - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events, no
-      rain damage on roofed builds, plant-anywhere, and `NoFoodDecay` - food holds its full
+    - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events (off
+      by default - Valheim's own world settings can make raids rarer instead), no rain damage
+      on roofed builds, plant-anywhere, and `NoFoodDecay` - food holds its full
       benefit for its whole duration instead of vanilla's steady decline (it still expires on
       schedule, the benefit just drops off in one step at the end).
     - `SleepPatches.cs` - sleep regardless of nearby enemies/exposure/fire/wetness, skip to

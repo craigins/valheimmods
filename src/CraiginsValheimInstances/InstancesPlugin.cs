@@ -34,7 +34,7 @@ namespace CraiginsValheimMod.Instances
     {
         public const string ModGuid = "com.craigins.valheiminstances";
         public const string ModName = "Craigins Valheim Instances";
-        public const string ModVersion = "0.6.0";
+        public const string ModVersion = "0.6.1";
 
         public static InstancesPlugin Instance { get; private set; }
 

@@ -23,13 +23,22 @@ namespace CraiginsValheimMod.Patches
                     return;
                 }
 
-                // The CinematicsManager check mirrors one Valheim 1.0 added to UpdateSleeping
-                // itself. This postfix re-implements vanilla's trigger with the "is it night"
-                // gate removed, so any *other* guard vanilla grows has to be copied here too or
-                // we'd skip to morning in a situation the game deliberately refuses to.
+                // This postfix re-implements vanilla's trigger with the "is it night" gate
+                // removed, so every *other* guard vanilla has must be copied here too or we'd
+                // skip to morning in a situation the game deliberately refuses to.
+                //
+                // The m_lastSleepTime cooldown is the one that bites. On the tick a skip ends,
+                // vanilla sets m_sleeping = false and sends SleepStop - and this postfix runs
+                // straight after, in the same call, while every player's ZDO still says in-bed
+                // because the SleepStop hasn't reached them yet. Without the cooldown that
+                // re-triggers immediately and skips a whole extra day (it's already morning),
+                // doubling the time everyone spends on the black screen.
+                //
+                // The CinematicsManager check mirrors one Valheim 1.0 added to UpdateSleeping.
                 if (!__instance.m_sleeping
                     && !EnvMan.instance.IsTimeSkipping()
                     && !CinematicsManager.IsPlaying()
+                    && ZNet.instance.GetTimeSeconds() - __instance.m_lastSleepTime >= 10.0
                     && (bool)EverybodyIsTryingToSleep.Invoke(__instance, null))
                 {
                     EnvMan.instance.SkipToMorning();

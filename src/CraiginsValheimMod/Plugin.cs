@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.0";
+        public const string ModVersion = "0.6.1";
 
         public static Plugin Instance { get; private set; }
 
@@ -50,10 +50,10 @@ namespace CraiginsValheimMod
             Instance = this;
 
             SmoothMistlandsTerrain = Config.Bind(
-                "Terrain", "SmoothMistlandsTerrain", true,
+                "Terrain", "SmoothMistlandsTerrain", false,
                 "Generate Mistlands terrain with the smoother base-height algorithm instead of the default craggy mask, so it's easier to traverse.");
             RemoveMistlandsFog = Config.Bind(
-                "Atmosphere", "RemoveMistlandsFog", true,
+                "Atmosphere", "RemoveMistlandsFog", false,
                 "Removes the Mistlands ground mist (Mister/MistEmitter), so visibility isn't reduced.");
 
             CraftAnywhere = Config.Bind(
@@ -63,7 +63,7 @@ namespace CraiginsValheimMod
                 "QualityOfLife", "NoDeathPenalty", true,
                 "Removes the skill-level loss penalty on death.");
             DisableRandomEvents = Config.Bind(
-                "QualityOfLife", "DisableRandomEvents", true,
+                "QualityOfLife", "DisableRandomEvents", false,
                 "Disables random world events (raids, etc.).");
             NoRainDamage = Config.Bind(
                 "QualityOfLife", "NoRainDamage", true,
