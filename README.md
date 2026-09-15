@@ -68,6 +68,19 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       through `TreeBase.m_stubPrefab`, the same field `SpawnLog` instantiates. A species whose
       stump can't be resolved keeps dropping seeds from the tree, so a seed is never removed
       from the game without being put back somewhere.
+    - `HarpoonTeleportPatches.cs` - `HarpoonTeleport`. Not a port - new. Brings whatever you have
+      on the harpoon through a teleport with you rather than leaving it behind. The harpoon is
+      `SE_Harpooned`, a status effect on the *creature* whose `m_attacker` points back at the
+      puller; it's runtime-only (nothing in the ZDO) and exists solely on the machine that owns
+      the creature, which is almost always the puller's, since `ZDOMan` hands each peer ownership
+      of the ZDOs in its own active area and a harpooned creature is within 30m by definition.
+      The hook is `Player.UpdateTeleport`, not `TeleportTo` - the latter only *starts* a teleport,
+      while the former does the actual move two seconds later and may reposition the player
+      several more times while the destination loads. The creature is translated by the same delta
+      as the player, so the line never goes taut and `SE_Harpooned`'s own break test never fires,
+      then published with `ZSyncTransform.SyncNow()` (other clients snap rather than interpolate
+      past 5m). Client-side only - no server support needed. Harpooned players are skipped, since
+      their character is owned by the person playing it.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.

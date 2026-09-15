@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.2";
+        public const string ModVersion = "0.6.3";
 
         public static Plugin Instance { get; private set; }
 
@@ -30,6 +30,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> EverythingFloats;
         public static ConfigEntry<bool> UnlimitedBreeding;
         public static ConfigEntry<bool> SeedsFromStumps;
+        public static ConfigEntry<bool> HarpoonTeleport;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -95,6 +96,14 @@ namespace CraiginsValheimMod
                 "which also tidies the ground for replanting. Wood amounts and stack sizes are untouched, " +
                 "and each stump only ever drops a seed its own species already dropped - a species whose " +
                 "stump can't be resolved keeps dropping seeds from the tree exactly as vanilla does.");
+            HarpoonTeleport = Config.Bind(
+                "QualityOfLife", "HarpoonTeleport", true,
+                "Brings whatever you have on the harpoon through a teleport with you, instead of " +
+                "leaving it behind and snapping the line. The creature is moved by the same amount " +
+                "you are, so the line never goes taut and dragging behaves the same afterwards. " +
+                "Client-side and needs no server support: it works by moving a creature your own " +
+                "client already owns, which a harpooned one is unless another player is standing " +
+                "closer. Harpooned players are left alone, and bosses can't be harpooned at all.");
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,
