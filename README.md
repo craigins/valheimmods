@@ -81,6 +81,15 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       then published with `ZSyncTransform.SyncNow()` (other clients snap rather than interpolate
       past 5m). Client-side only - no server support needed. Harpooned players are skipped, since
       their character is owned by the person playing it.
+    - `SmelterPatches.cs` - `BlastFurnaceSmeltsAll`. New. The blast furnace also smelts
+      everything the regular smelter does. Everything that decides what a `Smelter` accepts, and
+      what it makes, reads its `m_conversion` list. So a `ZNetScene.Awake` postfix copies the
+      `smelter` prefab's pairs onto the `blastfurnace` prefab, skipping any ore the furnace
+      already takes. Fuel, speed and capacity are unchanged. The list is checked both by the
+      player loading ore and by the furnace's owner, so every client needs it on. A dedicated server
+      needs it too: it runs furnaces near the world centre when no player is near. Without the
+      setting, it uses up the queued ore without making bars, because `Smelter.Spawn` finds no
+      matching conversion.
     - Intentionally **not** ported: `TeleportAll` (vanilla already allows this), a
       `SpawnSystem` patch that only ever did debug logging, and `WearNTear.GetMinSupport`
       (`NoSupportRequired`), which was already commented out and dead in the original.

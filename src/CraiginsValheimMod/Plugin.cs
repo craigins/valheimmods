@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.3";
+        public const string ModVersion = "0.6.4";
 
         public static Plugin Instance { get; private set; }
 
@@ -31,6 +31,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> UnlimitedBreeding;
         public static ConfigEntry<bool> SeedsFromStumps;
         public static ConfigEntry<bool> HarpoonTeleport;
+        public static ConfigEntry<bool> BlastFurnaceSmeltsAll;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -104,6 +105,15 @@ namespace CraiginsValheimMod
                 "Client-side and needs no server support: it works by moving a creature your own " +
                 "client already owns, which a harpooned one is unless another player is standing " +
                 "closer. Harpooned players are left alone, and bosses can't be harpooned at all.");
+            BlastFurnaceSmeltsAll = Config.Bind(
+                "QualityOfLife", "BlastFurnaceSmeltsAll", true,
+                "Lets the blast furnace smelt everything the regular smelter does (copper, tin, iron, " +
+                "silver and their scrap), on top of its own ores, so you only need one. Fuel, speed and " +
+                "capacity stay the blast furnace's own. Every player needs it on, since whoever loads ore " +
+                "and whoever's game is running the furnace both check what it accepts - and so does a " +
+                "dedicated server, which runs furnaces near the world centre when nobody is close and " +
+                "would otherwise use up the queued ore without making bars. Read when the " +
+                "world loads, so a change needs you to rejoin.");
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,
