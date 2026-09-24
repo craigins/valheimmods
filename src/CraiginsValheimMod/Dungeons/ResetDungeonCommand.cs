@@ -21,15 +21,17 @@ namespace CraiginsValheimMod.Dungeons
     ///   1. Destroy the interior's contents. DungeonGenerator.Clear() only removes room shells;
     ///      the chests/spawners/doors are unparented ZDOs that would otherwise survive into the
     ///      new layout. See DungeonInterior for the details.
-    ///   2. Call DungeonGenerator.Generate(seed, SpawnMode.Full), which is public and already does
-    ///      the whole reset internally - Clear, re-seed Random, GenerateRooms, Save back to the
-    ///      same ZDO. Generation isn't reimplemented here, just re-invoked.
+    ///   2. Call DungeonGenerator.Generate(seed, mode), which is public and already does the
+    ///      whole reset internally - Clear, re-seed Random, GenerateRooms, Save back to the same
+    ///      ZDO. Generation isn't reimplemented here, just re-invoked. See DungeonReset.Execute
+    ///      for which spawn mode.
     ///
-    /// TARGETING is limited to dungeons whose zone is currently loaded, because a DungeonGenerator
-    /// only exists as a GameObject while its zone is live - ZoneSystem loads zones around player
-    /// reference positions and there's no supported way to ask it for an arbitrary one. In
-    /// practice: go stand at the dungeon you want. 'resetdungeon list all' will tell you where the
-    /// unloaded ones are so you know where to walk.
+    /// TARGETING. Any generated dungeon in the world can be named by zone= or name=, whether or
+    /// not it's instantiated here: DungeonReset.Acquire builds a transient generator from the
+    /// ZDO when it isn't, which on a dedicated server is nearly always, since the server only
+    /// instantiates objects around the world origin. With no arguments the nearest instantiated
+    /// dungeon is used, which only means something where there's a local player to be near.
+    /// 'resetdungeon list all' gives every dungeon's zone for the explicit forms.
     ///
     /// NOT TESTED IN-GAME.
     /// </summary>
@@ -41,9 +43,10 @@ namespace CraiginsValheimMod.Dungeons
             "Wipes a generated dungeon's interior and rebuilds it with a new layout - the only way to change " +
             "a dungeon that already exists, since vanilla bakes the layout into the world when the zone first " +
             "generates. Usage: resetdungeon [list [all]] [name=<Location>] [zone=<x>,<z>] [seed=<n>] [dry] " +
-            "[force] [wipebuilt]. With no arguments it targets the nearest loaded dungeon. Only dungeons in a " +
-            "currently loaded zone can be targeted, so stand at the one you want ('list all' shows where the " +
-            "rest are). Player-built pieces inside are kept unless 'wipebuilt'; dropped items are always swept. " +
+            "[force] [wipebuilt]. With no arguments it targets the nearest dungeon to the local player; on a " +
+            "dedicated server give zone= or name= ('list all' shows every dungeon's zone). Any generated " +
+            "dungeon can be targeted, loaded or not. " +
+            "Player-built pieces inside are kept unless 'wipebuilt'; dropped items are always swept. " +
             "Refuses while anyone is inside, or while the biome's boss is alive per Dungeons.ResetBossGate, " +
             "unless 'force'. IMPORTANT: connected clients keep showing the old " +
             "rooms until they leave and re-enter the zone.";
@@ -87,38 +90,32 @@ namespace CraiginsValheimMod.Dungeons
                 return;
             }
 
-            DungeonGenerator target = SelectTarget(loaded, opts, out string reason);
-            if (target == null)
+            using (DungeonReset.Handle target = SelectTarget(loaded, opts, out string reason))
             {
-                Print("resetdungeon: " + reason);
-                return;
-            }
+                if (target == null)
+                {
+                    Print("resetdungeon: " + reason);
+                    return;
+                }
 
-            Reset(target, opts);
+                Reset(target, opts);
+            }
         }
 
         // ---- targeting -------------------------------------------------------------------
 
-        private DungeonGenerator SelectTarget(List<DungeonGenerator> loaded, Options opts, out string reason)
+        private DungeonReset.Handle SelectTarget(List<DungeonGenerator> loaded, Options opts, out string reason)
         {
             reason = null;
 
             if (opts.HaveZone)
             {
-                foreach (DungeonGenerator dungeon in loaded)
-                {
-                    if (DungeonInterior.ZoneOf(dungeon) == opts.Zone)
-                    {
-                        return dungeon;
-                    }
-                }
-                reason = $"no loaded dungeon in zone ({opts.Zone.x}, {opts.Zone.y}). " +
-                         "Its zone has to be loaded - go stand there, or run 'resetdungeon list' to see what is.";
-                return null;
+                return DungeonReset.Acquire(opts.Zone, out reason);
             }
 
             if (opts.Name != null)
             {
+                // Instantiated here first: on a host that's "the one I'm standing at".
                 var matches = new List<DungeonGenerator>();
                 foreach (DungeonGenerator dungeon in loaded)
                 {
@@ -128,46 +125,89 @@ namespace CraiginsValheimMod.Dungeons
                         matches.Add(dungeon);
                     }
                 }
-
                 if (matches.Count == 1)
                 {
-                    return matches[0];
+                    return Live(matches[0]);
                 }
                 if (matches.Count > 1)
                 {
-                    return Nearest(matches, out reason)
-                        ?? Ambiguous(matches, out reason);
+                    DungeonGenerator nearest = Nearest(matches);
+                    return nearest != null ? Live(nearest) : Ambiguous(matches, out reason);
                 }
 
-                reason = $"no loaded dungeon matching '{opts.Name}'.";
-                if (ZoneSystem.instance.FindClosestLocation(opts.Name, ReferencePoint(out _), out ZoneSystem.LocationInstance closest))
+                // Otherwise anywhere in the world, from the location table.
+                List<ZoneSystem.LocationInstance> placed = WorldDungeons(opts.Name);
+                if (placed.Count == 0)
                 {
-                    reason += $" The nearest one in the world is at ({closest.m_position.x:0}, {closest.m_position.z:0}) - " +
-                              "go there and run this again.";
+                    reason = $"no generated dungeon matching '{opts.Name}'. " +
+                             "Run 'resetdungeon list all' to see what's in this world.";
+                    return null;
                 }
-                else
+                if (placed.Count > 1)
                 {
-                    reason += " Run 'resetdungeon list all' to see what's in this world (names must match exactly there).";
+                    Vector3 from = ReferencePoint(out bool haveRef);
+                    if (!haveRef)
+                    {
+                        reason = $"{placed.Count} dungeons match '{opts.Name}' and there's no local player to measure " +
+                                 "'nearest' from (dedicated server). Pick one explicitly with zone=<x>,<z>:";
+                        foreach (ZoneSystem.LocationInstance instance in placed)
+                        {
+                            Vector2s zone = ZoneSystem.GetZone(instance.m_position);
+                            reason += $"\n  zone={zone.x},{zone.y}  {DungeonReset.LocationName(instance.m_location)}  " +
+                                      $"at ({instance.m_position.x:0}, {instance.m_position.z:0})";
+                        }
+                        return null;
+                    }
+                    placed.Sort((a, b) => Utils.DistanceXZ(from, a.m_position).CompareTo(Utils.DistanceXZ(from, b.m_position)));
                 }
-                return null;
+                return DungeonReset.Acquire(ZoneSystem.GetZone(placed[0].m_position), out reason);
             }
 
             if (loaded.Count == 0)
             {
-                reason = "no dungeon is loaded right now. Go stand at the one you want, " +
-                         "or run 'resetdungeon list all' to find one.";
+                ReferencePoint(out bool haveLocal);
+                reason = haveLocal
+                    ? "no dungeon is loaded near you. Go stand at the one you want, or name it with " +
+                      "zone=<x>,<z> or name=<Location> ('resetdungeon list all' shows them)."
+                    : "on a dedicated server, say which dungeon: zone=<x>,<z> or name=<Location> " +
+                      "('resetdungeon list all' shows them).";
                 return null;
             }
             if (loaded.Count == 1)
             {
-                return loaded[0];
+                return Live(loaded[0]);
             }
-            return Nearest(loaded, out reason) ?? Ambiguous(loaded, out reason);
+            DungeonGenerator best = Nearest(loaded);
+            return best != null ? Live(best) : Ambiguous(loaded, out reason);
         }
 
-        private static DungeonGenerator Nearest(List<DungeonGenerator> candidates, out string reason)
+        private static DungeonReset.Handle Live(DungeonGenerator dungeon)
         {
-            reason = null;
+            return new DungeonReset.Handle { Dungeon = dungeon, Transient = false };
+        }
+
+        /// <summary>
+        /// Every placed location with an interior whose name contains <paramref name="name"/>,
+        /// straight from the location table - the same source 'list all' prints from.
+        /// </summary>
+        private static List<ZoneSystem.LocationInstance> WorldDungeons(string name)
+        {
+            var found = new List<ZoneSystem.LocationInstance>();
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.m_locationInstances.Values)
+            {
+                if (instance.m_placed
+                    && instance.m_location != null
+                    && instance.m_location.m_interiorRadius > 0f
+                    && DungeonReset.LocationName(instance.m_location).IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    found.Add(instance);
+                }
+            }
+            return found;
+        }
+
+        private static DungeonGenerator Nearest(List<DungeonGenerator> candidates)
+        {
             Vector3 from = ReferencePoint(out bool haveRef);
             if (!haveRef)
             {
@@ -188,7 +228,7 @@ namespace CraiginsValheimMod.Dungeons
             return best;
         }
 
-        private DungeonGenerator Ambiguous(List<DungeonGenerator> candidates, out string reason)
+        private DungeonReset.Handle Ambiguous(List<DungeonGenerator> candidates, out string reason)
         {
             reason = $"{candidates.Count} dungeons match and there's no local player to measure 'nearest' from " +
                      "(dedicated server). Pick one explicitly with zone=<x>,<z>:";
@@ -227,8 +267,9 @@ namespace CraiginsValheimMod.Dungeons
         /// Argument handling and reporting only - the checks and the rebuild itself live in
         /// DungeonReset, shared with the dungeon-entrance interaction so the two can't drift.
         /// </summary>
-        private void Reset(DungeonGenerator target, Options opts)
+        private void Reset(DungeonReset.Handle handle, Options opts)
         {
+            DungeonGenerator target = handle.Dungeon;
             string label = DungeonReset.Describe(target);
 
             if (!DungeonReset.Validate(target, opts.Force, out string error))
@@ -251,9 +292,10 @@ namespace CraiginsValheimMod.Dungeons
                 return;
             }
 
-            DungeonReset.Result result = DungeonReset.Execute(target, seed, preserveBuilt);
+            DungeonReset.Result result = DungeonReset.Execute(handle, seed, preserveBuilt);
 
-            Print($"resetdungeon: rebuilt {label} with seed {result.Seed} - " +
+            Print($"resetdungeon: rebuilt {label}{(handle.Transient ? " (not instantiated here - rebuilt from its ZDO)" : "")} " +
+                  $"with seed {result.Seed} - " +
                   $"{Rooms(result.OldRooms)} rooms -> {Rooms(result.NewRooms)} rooms, " +
                   $"destroyed {result.Destroyed} old object(s){PreservedNote(result.Preserved)}. " +
                   $"Re-run with seed={result.Seed} to reproduce this exact layout.");
@@ -286,11 +328,13 @@ namespace CraiginsValheimMod.Dungeons
 
             if (loaded.Count == 0)
             {
-                Print("resetdungeon: no dungeons loaded.");
+                Print("resetdungeon: no dungeons instantiated on this machine" +
+                      (haveRef ? "." : " (a dedicated server only instantiates around the world origin) - " +
+                                       "any generated one can still be reset by zone= or name=."));
             }
             else
             {
-                Print($"resetdungeon: {loaded.Count} loaded dungeon(s) - these can be reset right now:");
+                Print($"resetdungeon: {loaded.Count} dungeon(s) instantiated here:");
                 foreach (DungeonGenerator dungeon in loaded)
                 {
                     Vector2s zone = DungeonInterior.ZoneOf(dungeon);

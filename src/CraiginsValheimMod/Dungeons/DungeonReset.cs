@@ -1,3 +1,5 @@
+using System;
+using Object = UnityEngine.Object;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,7 +8,8 @@ namespace CraiginsValheimMod.Dungeons
     /// <summary>
     /// The authoritative "wipe this dungeon and rebuild it" operation, plus the checks that
     /// guard it. Server-side only - the world's ZDOs live there and DungeonGenerator.Save()
-    /// writes to the generator's ZDO.
+    /// writes to the generator's ZDO. The generator itself usually does NOT exist as an object
+    /// on a dedicated server (see FindLoaded), so Acquire() materialises one from the ZDO.
     ///
     /// Shared by the two things that can ask for a reset: the 'resetdungeon' console command and
     /// the dungeon-entrance interaction (DungeonEntrancePatches). Both funnel through Validate()
@@ -28,9 +31,14 @@ namespace CraiginsValheimMod.Dungeons
         }
 
         /// <summary>
-        /// A DungeonGenerator exists as a GameObject only while its zone is loaded - ZoneSystem
-        /// loads zones around player reference positions and there's no supported way to ask it
-        /// for an arbitrary one. So every caller is limited to dungeons somebody is standing near.
+        /// The DungeonGenerators that exist as GameObjects on this machine. ZNetScene only
+        /// instantiates objects around ZNet's reference position, which is the local player on a
+        /// client or a host, and the world origin on a dedicated server (Game.Start sets it to
+        /// Vector3.zero and nothing ever moves it). So on a dedicated server this finds dungeons
+        /// near (0,0) and nothing else - a player standing at an entrance three kilometres out
+        /// has that dungeon instantiated on THEIR machine, never on the server's. Use Acquire()
+        /// for anything that has to work there; this is the cheap "is it already live here" check
+        /// and the basis of 'resetdungeon list'.
         /// </summary>
         public static List<DungeonGenerator> FindLoaded()
         {
@@ -55,6 +63,125 @@ namespace CraiginsValheimMod.Dungeons
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// A generator to operate on, plus whether it has to be thrown away afterwards. Dispose
+        /// it when done - a transient one is registered with ZNetScene and would otherwise sit
+        /// there until the scene's next cleanup pass noticed it was outside the active area.
+        /// </summary>
+        public sealed class Handle : IDisposable
+        {
+            public DungeonGenerator Dungeon;
+
+            /// <summary>
+            /// Built on demand from the ZDO rather than found live. Its rooms must be generated
+            /// in Ghost mode (see Execute), and it's destroyed on Dispose.
+            /// </summary>
+            public bool Transient;
+
+            public void Dispose()
+            {
+                if (Transient && Dungeon != null)
+                {
+                    Discard(Dungeon);
+                    Dungeon = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The generator for a zone's dungeon: the live instance if this machine has one, else a
+        /// transient one materialised from the generator's ZDO, which the server always has.
+        ///
+        /// This is the same trick vanilla uses to generate the world on a dedicated server: the
+        /// server never instantiates a zone's objects for real, it ghost-spawns them
+        /// (ZoneSystem.CreateGhostZones, per connected peer), which creates the ZDOs and destroys
+        /// the GameObjects in the same frame. ZNetScene.CreateObject with the existing ZDO gives
+        /// us a DungeonGenerator whose Awake() loads the saved room list from that ZDO and whose
+        /// Save() will write the new one back to it, so every client reloads the same dungeon.
+        /// </summary>
+        public static Handle Acquire(Vector2s zone, out string error)
+        {
+            error = null;
+
+            DungeonGenerator live = FindLoadedInZone(zone);
+            if (live != null)
+            {
+                return new Handle { Dungeon = live, Transient = false };
+            }
+
+            ZDO zdo = FindGeneratorZdo(zone);
+            if (zdo == null)
+            {
+                error = $"no generated dungeon in zone ({zone.x}, {zone.y}).";
+                return null;
+            }
+
+            GameObject go = ZNetScene.instance.CreateObject(zdo);
+            DungeonGenerator dungeon = go != null ? go.GetComponent<DungeonGenerator>() : null;
+            if (dungeon == null)
+            {
+                if (go != null)
+                {
+                    Discard(go.GetComponent<ZNetView>());
+                }
+                error = $"couldn't instantiate the dungeon generator in zone ({zone.x}, {zone.y}).";
+                return null;
+            }
+
+            return new Handle { Dungeon = dungeon, Transient = true };
+        }
+
+        /// <summary>
+        /// The generator's ZDO in this zone: the one persistent object up in the interior whose
+        /// prefab carries a DungeonGenerator. Interiors sit straight above their entrance in XZ
+        /// and sectors ignore Y, so the entrance's zone is the right sector to scan.
+        /// </summary>
+        private static ZDO FindGeneratorZdo(Vector2s zone)
+        {
+            var sector = new List<ZDO>();
+            ZDOMan.instance.FindSectorObjects(zone, new SimulationDistance(0, 0), sector);
+
+            foreach (ZDO zdo in sector)
+            {
+                if (zdo == null || zdo.GetPosition().y <= DungeonInterior.InteriorFloor)
+                {
+                    continue;
+                }
+                GameObject prefab = ZNetScene.instance.GetPrefab(zdo.GetPrefab());
+                if (prefab != null && prefab.GetComponent<DungeonGenerator>() != null)
+                {
+                    return zdo;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Undo CreateObject the way ZNetScene.RemoveObjects does: unhook the ZDO (which clears
+        /// its Created flag so a client's scene can still instantiate it), drop the registration,
+        /// destroy the GameObject. NOT ZNetScene.Destroy - that destroys the ZDO too when we own
+        /// it, and Execute just took ownership of it to Save().
+        /// </summary>
+        private static void Discard(DungeonGenerator dungeon)
+        {
+            Discard(dungeon.GetComponent<ZNetView>());
+        }
+
+        private static void Discard(ZNetView nview)
+        {
+            if (nview == null)
+            {
+                return;
+            }
+            ZDO zdo = nview.GetZDO();
+            if (zdo != null)
+            {
+                nview.ResetZDO();
+                ZNetScene.instance.m_instances.Remove(zdo);
+            }
+            Object.Destroy(nview.gameObject);
         }
 
         public static string LocationName(DungeonGenerator dungeon)
@@ -169,13 +296,26 @@ namespace CraiginsValheimMod.Dungeons
         ///   1. Destroy the interior's contents. DungeonGenerator.Clear() only removes room
         ///      shells; the chests/spawners/doors are unparented ZDOs that would otherwise
         ///      survive into the new layout. See DungeonInterior.
-        ///   2. Call Generate(seed, SpawnMode.Full), which is public and already does the whole
-        ///      rebuild internally - Clear, re-seed Random, GenerateRooms, Save back to the same
-        ///      ZDO. Generation isn't reimplemented here, just re-invoked. Ghost would build the
-        ///      layout and then destroy every object in it.
+        ///   2. Call Generate(seed, mode), which is public and already does the whole rebuild
+        ///      internally - Clear, re-seed Random, GenerateRooms, Save back to the same ZDO.
+        ///      Generation isn't reimplemented here, just re-invoked.
+        ///
+        /// The spawn mode follows the handle. A live generator gets Full, and the rooms it
+        /// places stay as real objects here. A transient one gets Ghost, exactly as the server's
+        /// own zone generation does: every networked object in the new rooms still gets its ZDO
+        /// (ZNetView.Awake creates it before checking the ghost flag), the GameObjects are
+        /// destroyed in the same frame, and the ZDOs flow to whichever client is near. Full mode
+        /// on a transient would leave hundreds of instantiated objects sitting outside the
+        /// server's active area until ZNetScene's next pass swept them.
+        ///
+        /// Known limit, in both modes: a generator created from a ZDO has m_originalPosition at
+        /// its default (it's only set by SpawnLocation, on first generation), and
+        /// m_useCustomInteriorTransform dungeons - frost caves, Mistlands, Hildir's - use it to
+        /// place their bounds. Crypts don't.
         /// </summary>
-        public static Result Execute(DungeonGenerator dungeon, int seed, bool preservePlayerBuilt)
+        public static Result Execute(Handle handle, int seed, bool preservePlayerBuilt)
         {
+            DungeonGenerator dungeon = handle.Dungeon;
             var doomed = new List<ZDO>();
             DungeonInterior.Collect(dungeon, preservePlayerBuilt, doomed, out int preserved);
 
@@ -189,7 +329,22 @@ namespace CraiginsValheimMod.Dungeons
                 zdo.SetOwner(ZDOMan.GetSessionID());
             }
 
-            dungeon.Generate(seed, ZoneSystem.SpawnMode.Full);
+            if (handle.Transient)
+            {
+                ZNetView.StartGhostInit();
+                try
+                {
+                    dungeon.Generate(seed, ZoneSystem.SpawnMode.Ghost);
+                }
+                finally
+                {
+                    ZNetView.FinishGhostInit();
+                }
+            }
+            else
+            {
+                dungeon.Generate(seed, ZoneSystem.SpawnMode.Full);
+            }
 
             // Keep GetSeed() (and vanilla's 'printseeds') honest about what actually built this
             // dungeon, instead of reporting the position-derived seed it no longer used.

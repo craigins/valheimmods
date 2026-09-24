@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>CraiginsValheimStargate</AssemblyName>
     <RootNamespace>CraiginsValheimMod.Stargate</RootNamespace>
-    <Version>0.6.4</Version>
+    <Version>0.6.5</Version>
     <Product>Craigins Valheim Stargate</Product>
     <Authors>craigins</Authors>
 

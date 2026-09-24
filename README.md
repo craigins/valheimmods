@@ -230,11 +230,11 @@ zone generates and never revisits them, so this is the only way to change a dung
 already exists - including applying `MinDungeonRooms` retroactively to one.
 
 ```
-resetdungeon                    # nearest loaded dungeon
-resetdungeon list               # what can be reset right now
-resetdungeon list all           # every dungeon in the world, with coordinates
+resetdungeon                    # nearest dungeon to the local player (hosts only)
+resetdungeon list               # dungeons instantiated on this machine
+resetdungeon list all           # every dungeon in the world, with coordinates and zones
 resetdungeon name=SunkenCrypt4  # target by location name (substring, case-insensitive)
-resetdungeon zone=12,-34        # target by zone, no spaces
+resetdungeon zone=12,-34        # target by zone, no spaces - works for any generated dungeon
 resetdungeon seed=12345         # a specific layout instead of a fresh random one
 resetdungeon dry                # report what would happen, change nothing
 resetdungeon force              # go ahead even though someone is inside, or the boss gate says no
@@ -255,6 +255,14 @@ Hover the entrance, use the core from your inventory, and the dungeon rebuilds. 
 consumed only when the server reports success, so a refused reset - somebody still inside -
 doesn't eat it. `ResetCostItem` (any prefab name in ObjectDB) and `ResetCostAmount` configure
 the price.
+
+**Sunken Crypts:** open the iron gate first, then hover the dark doorway just behind it. In
+vanilla a Sunken Crypt entrance has no hover prompt at all - you open the gate and walk in -
+because, uniquely among the dungeons, its `Gateway` has nothing but its teleport trigger, which
+sits on a layer the hover raycast ignores. With `ResetFromEntrance` on, the mod gives that
+doorway the same hoverable surface every other dungeon's has (a trigger box, so nothing changes
+physically), and it shows `[E] Enter` plus the regenerate line like the rest. The closed gate
+blocks the hover, so the prompt appears only once it's open.
 
 ### Gating regeneration on boss kills
 
@@ -306,7 +314,18 @@ while the entrance is only hovered, which is the one place the interaction is st
 
 The interaction happens on the player's client and the rebuild has to happen where the world
 lives, so the client validates locally, asks the server over a routed RPC, and the server does
-the authoritative checks and the work. The server does *not* verify the client really held a
+the authoritative checks and the work.
+
+**The server usually has no live copy of the dungeon.** A dedicated server only instantiates
+objects around ZNet's reference position, which for it is the world origin - a dungeon a player
+is standing at exists as GameObjects on *that player's* machine, and on the server only as ZDOs.
+So `DungeonReset.Acquire` builds a transient `DungeonGenerator` from the generator's ZDO
+(`ZNetScene.CreateObject`), whose `Awake` loads the saved rooms and whose `Save` writes the new
+ones back to the same ZDO, and regenerates in `SpawnMode.Ghost`: the new rooms' networked
+objects get their ZDOs and the GameObjects are destroyed in the same frame, exactly how the
+server ghost-generates zones for players in vanilla. The console command uses the same path,
+which is what lets it target any generated dungeon by `zone=` or `name=` rather than only the
+ones near somebody. The server does *not* verify the client really held a
 core - it has no view of a client's inventory, and Valheim's inventory is client-authoritative
 throughout. Same trust model as the rest of the game; admin-gating it instead would just make
 the cost decorative.

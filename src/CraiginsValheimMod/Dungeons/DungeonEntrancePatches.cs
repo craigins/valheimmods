@@ -123,6 +123,94 @@ namespace CraiginsValheimMod.Dungeons
             }
         }
 
+        // ---- making the entrance hoverable at all ---------------------------------------
+
+        /// <summary>
+        /// Same list as Player.Awake builds into m_interactMask (private, and there's no Player
+        /// on a dedicated server anyway). If this drifts from vanilla the only consequence is
+        /// an entrance getting a hover surface it didn't need.
+        /// </summary>
+        private static readonly int InteractMask = LayerMask.GetMask(
+            "item", "piece", "piece_nonsolid", "Default", "static_solid", "Default_small",
+            "character", "character_net", "terrain", "vehicle", "character_ghost");
+
+        /// <summary>
+        /// The hover raycast (Player.FindHoverObject) only looks at the layers in m_interactMask,
+        /// and a Teleport's own trigger collider sits on character_trigger, which isn't one of
+        /// them. So an entrance is hoverable only through some *other* collider under it: every
+        /// dungeon in the game has a "Cube" child on Default for exactly that - the black box
+        /// in the doorway that vanilla's "[E] Enter" comes from - except the Sunken Crypt, whose
+        /// Gateway has nothing but its trigger. In vanilla that's invisible: you open the iron
+        /// gate and walk into the trigger, and no prompt was ever needed. For us it means there
+        /// is nothing to hover and nothing to use a core on, so the whole interaction is
+        /// unreachable there.
+        ///
+        /// The fix is to give such an entrance the child the others already have: a trigger
+        /// BoxCollider on Default, the shape of the Teleport's own trigger. A trigger so it
+        /// changes nothing physically (Iron Gate do the same in TheHole01's "Cube Hover"), and
+        /// on the Teleport's child so GetComponentInParent finds the Teleport for hover text,
+        /// Interact and UseItem alike - no code path has to learn about it. Being a child with
+        /// no rigidbody, its OnTriggerEnter never reaches the Teleport, so it can't teleport
+        /// anyone early. The Sunken Crypt then shows "[E] Enter" through the open gate like every
+        /// other dungeon does.
+        ///
+        /// Location.Awake is the hook because the location prefab is instantiated whole on every
+        /// machine that loads the zone (LocationProxy -> SpawnLocation in Client mode), with the
+        /// Teleport and its target already in place, and Teleport itself has no Awake to patch.
+        /// </summary>
+        [HarmonyPatch(typeof(Location), "Awake")]
+        private static class Location_Awake_Patch
+        {
+            private static void Postfix(Location __instance)
+            {
+                if (!Plugin.DungeonResetFromEntrance.Value || !__instance.m_hasInterior)
+                {
+                    return;
+                }
+
+                foreach (Teleport teleport in __instance.GetComponentsInChildren<Teleport>(true))
+                {
+                    if (IsDungeonEntrance(teleport) && !HasHoverSurface(teleport))
+                    {
+                        AddHoverSurface(teleport);
+                    }
+                }
+            }
+        }
+
+        private static bool HasHoverSurface(Teleport teleport)
+        {
+            foreach (Collider collider in teleport.GetComponentsInChildren<Collider>(true))
+            {
+                if ((InteractMask & (1 << collider.gameObject.layer)) != 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void AddHoverSurface(Teleport teleport)
+        {
+            var surface = new GameObject("CVM_HoverSurface");
+            surface.layer = LayerMask.NameToLayer("Default");
+            surface.transform.SetParent(teleport.transform, false);
+
+            BoxCollider box = surface.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+
+            BoxCollider own = teleport.GetComponent<BoxCollider>();
+            if (own != null)
+            {
+                box.center = own.center;
+                box.size = own.size;
+            }
+            else
+            {
+                box.size = new Vector3(2f, 2f, 0.5f);
+            }
+        }
+
         /// <summary>
         /// The surface end of a dungeon, as opposed to the exit standing inside one: its target
         /// is up in the interior (Character.InInterior is a bare y > 3000) and it isn't.
@@ -211,39 +299,47 @@ namespace CraiginsValheimMod.Dungeons
                 return;
             }
 
+            // A dedicated server has no live generator for a dungeon a remote player is standing
+            // at - it only instantiates objects around the world origin - so this usually builds
+            // a transient one from the ZDO. See DungeonReset.Acquire.
             var zone = new Vector2s(zoneX, zoneY);
-            DungeonGenerator dungeon = DungeonReset.FindLoadedInZone(zone);
-            if (dungeon == null)
+            using (DungeonReset.Handle handle = DungeonReset.Acquire(zone, out string acquireError))
             {
-                Reply(sender, false, "That dungeon isn't loaded on the server right now.");
-                return;
+                if (handle == null)
+                {
+                    Jotunn.Logger.LogWarning($"Dungeon reset requested by peer {sender} in zone ({zoneX}, {zoneY}): {acquireError}");
+                    Reply(sender, false, "There's no generated dungeon here to rebuild.");
+                    return;
+                }
+
+                DungeonGenerator dungeon = handle.Dungeon;
+
+                // Asked before Validate only so the refusal can name the boss; Validate enforces
+                // the same gate for the console path.
+                if (!DungeonProgression.IsUnlocked(dungeon, out string requirement))
+                {
+                    Reply(sender, false, $"Sealed until {requirement} falls.");
+                    return;
+                }
+
+                if (!DungeonReset.Validate(dungeon, force: false, out string error))
+                {
+                    Jotunn.Logger.LogInfo($"Dungeon reset refused for peer {sender}: {error}");
+                    Reply(sender, false, DungeonReset.AnyoneInside(dungeon, out string who)
+                        ? $"{who} is still inside - everyone has to be out first."
+                        : "This dungeon can't be regenerated.");
+                    return;
+                }
+
+                DungeonReset.Result result = DungeonReset.Execute(handle, DungeonReset.NewSeed(), preservePlayerBuilt: true);
+
+                Jotunn.Logger.LogInfo(
+                    $"Dungeon reset by peer {sender}: {DungeonReset.Describe(dungeon)} rebuilt with seed {result.Seed} - " +
+                    $"{result.OldRooms} rooms -> {result.NewRooms} rooms, destroyed {result.Destroyed} object(s), " +
+                    $"kept {result.Preserved} player-built" + (handle.Transient ? " (via transient generator)." : "."));
+
+                Reply(sender, true, $"The dungeon shifts and reforms. ({result.NewRooms} rooms)");
             }
-
-            // Asked before Validate only so the refusal can name the boss; Validate enforces the
-            // same gate for the console path.
-            if (!DungeonProgression.IsUnlocked(dungeon, out string requirement))
-            {
-                Reply(sender, false, $"Sealed until {requirement} falls.");
-                return;
-            }
-
-            if (!DungeonReset.Validate(dungeon, force: false, out string error))
-            {
-                Jotunn.Logger.LogInfo($"Dungeon reset refused for peer {sender}: {error}");
-                Reply(sender, false, DungeonReset.AnyoneInside(dungeon, out string who)
-                    ? $"{who} is still inside - everyone has to be out first."
-                    : "This dungeon can't be regenerated.");
-                return;
-            }
-
-            DungeonReset.Result result = DungeonReset.Execute(dungeon, DungeonReset.NewSeed(), preservePlayerBuilt: true);
-
-            Jotunn.Logger.LogInfo(
-                $"Dungeon reset by peer {sender}: {DungeonReset.Describe(dungeon)} rebuilt with seed {result.Seed} - " +
-                $"{result.OldRooms} rooms -> {result.NewRooms} rooms, destroyed {result.Destroyed} object(s), " +
-                $"kept {result.Preserved} player-built.");
-
-            Reply(sender, true, $"The dungeon shifts and reforms. ({result.NewRooms} rooms)");
         }
 
         private static void Reply(long peer, bool success, string message)
