@@ -13,12 +13,16 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.5";
+        public const string ModVersion = "0.6.6";
 
         public static Plugin Instance { get; private set; }
 
         public static ConfigEntry<bool> SmoothMistlandsTerrain;
         public static ConfigEntry<bool> RemoveMistlandsFog;
+        public static ConfigEntry<bool> FixedMistlandsFog;
+        public static ConfigEntry<float> MistlandsFogDensity;
+        public static ConfigEntry<bool> WispLightClearsFog;
+        public static ConfigEntry<float> WispLightFogFadeSeconds;
 
         public static ConfigEntry<bool> CraftAnywhere;
         public static ConfigEntry<bool> NoDeathPenalty;
@@ -57,6 +61,28 @@ namespace CraiginsValheimMod
             RemoveMistlandsFog = Config.Bind(
                 "Atmosphere", "RemoveMistlandsFog", false,
                 "Removes the Mistlands ground mist (Mister/MistEmitter), so visibility isn't reduced.");
+            FixedMistlandsFog = Config.Bind(
+                "Atmosphere", "FixedMistlandsFog", false,
+                "Pins the weather fog density of every Mistlands weather (clear, rain, thunder) to " +
+                "MistlandsFogDensity for all times of day. Meant to pair with RemoveMistlandsFog: the " +
+                "ground mist goes, and ordinary weather fog takes its place. Rain and thunder still occur.");
+            MistlandsFogDensity = Config.Bind(
+                "Atmosphere", "MistlandsFogDensity", 0.2f,
+                new ConfigDescription(
+                    "Fog density used by FixedMistlandsFog. For scale: vanilla Mistlands weather is 0.02-0.05, " +
+                    "the Meadows 'Misty' weather peaks at 0.15 at night, and Sunken Crypts are 0.2.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            WispLightClearsFog = Config.Bind(
+                "Atmosphere", "WispLightClearsFog", false,
+                "While you have a Wisplight equipped, weather fog is removed entirely, in every biome. " +
+                "Applies to the wearer's own view only; placed wisp torches don't count.");
+            WispLightFogFadeSeconds = Config.Bind(
+                "Atmosphere", "WispLightFogFadeSeconds", 1f,
+                new ConfigDescription(
+                    "Seconds the fog takes to fade out/in when the Wisplight is equipped/unequipped.",
+                    new AcceptableValueRange<float>(0.01f, 10f)));
+            FixedMistlandsFog.SettingChanged += (_, __) => Patches.AtmospherePatches.MistlandsFog.Apply();
+            MistlandsFogDensity.SettingChanged += (_, __) => Patches.AtmospherePatches.MistlandsFog.Apply();
 
             CraftAnywhere = Config.Bind(
                 "QualityOfLife", "CraftAnywhere", true,

@@ -20,7 +20,14 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       swapping (for `Mathf`); everything else matched exactly. Off by default
       (`SmoothMistlandsTerrain`).
     - `AtmospherePatches.cs` - removes Mistlands ground mist (`Mister`/`MistEmitter`). Off by
-      default (`RemoveMistlandsFog`). **Wisp
+      default (`RemoveMistlandsFog`). Its companion `FixedMistlandsFog` (also off by default)
+      pins the *weather* fog of every Mistlands weather to `MistlandsFogDensity` (default 0.2,
+      the Sunken Crypt value; vanilla Mistlands weather sits at 0.02-0.05) for all times of
+      day, so ordinary weather fog stands in for the removed mist while rain and thunder still
+      roll as normal. Both settings apply live from the config. `WispLightClearsFog` (off by
+      default) removes weather fog entirely, in any biome, while the local player has a
+      Wisplight equipped - detected via its `SE_Demister` status effect, so placed wisp torches
+      don't count - with a short fade (`WispLightFogFadeSeconds`) on equip/unequip. **Wisp
       light radius has no implementation** - no source for it was found in the archive, so it
       still needs to be built (or found) from scratch.
     - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events (off

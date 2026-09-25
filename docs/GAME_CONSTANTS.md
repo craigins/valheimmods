@@ -237,3 +237,28 @@ but capped both concurrently (`m_maxNear`) and for its whole lifetime (`m_maxTot
 
 So "clear every enemy" is a reachable, stable state in a dungeon — the `CreatureSpawner`s are
 one-shot and the `SpawnArea` piles are destructible (and exhaust at 100 anyway).
+
+## Weather fog density (EnvSetup.m_fogDensity*, game 1.0.16)
+
+EnvMan's own `m_environments`/`m_biomes` hold only the original 21 weathers and 6 biomes.
+Mistlands, Ashlands and Deep North weather is **appended at runtime** by
+`ZoneSystem.SetupLocations` from the `_LocationList_*` prefabs (bundle `d59cfac`) via
+`EnvMan.AppendEnvironment`/`AppendBiomeSetup` - read the `LocationList` MonoBehaviours, not
+EnvMan, to see them. Ground mist (`Mister`/`ParticleMist`) is a separate system from this fog.
+
+Density is night / morning / day / evening; weight is the share of the biome's weather roll.
+
+| Weather | Biome (weight) | Fog density | Wet |
+|---|---|---|---|
+| Mistlands_clear | Mistlands (1.5) | 0.04 / 0.05 / 0.02 / 0.04 | no |
+| Mistlands_rain | Mistlands (0.1) | 0.04 / 0.05 / 0.03 / 0.04 | yes |
+| Mistlands_thunder | Mistlands (0.1) | 0.04 / 0.05 / 0.03 / 0.04 | yes |
+| Clear | Meadows (5.0), Ocean (1.0) | 0.01 / 0.01 / 0.003 / 0.01 | no |
+| Misty | Meadows (0.2), Black Forest (0.1), Plains (0.4), Ocean (0.1) | 0.15 / 0.10 / 0.02 / 0.10 | no |
+| Rain / LightRain / ThunderStorm | Meadows, Black Forest, Ocean | 0.03 flat | yes |
+| SnowStorm | Mountain (1.0) | 0.05 flat | no |
+| Ashlands_ashrain | Ashlands (1.5) | 0.03 / 0.05 / 0.02 / 0.01 | no |
+| Twilight_SnowStorm | Deep North (0.5) | 0.06 flat | no |
+| SunkenCrypt, DN_Bossroom | interior | 0.20 flat | no |
+
+0.15 (Misty at night) is the heaviest outdoor fog the game ships; 0.2 exists only in interiors.
