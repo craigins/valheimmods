@@ -369,13 +369,9 @@ namespace CraiginsValheimMod.Dungeons
             }
             _pendingItemName = null;
 
+            // The new rooms are drawn by DungeonShellRefresh as soon as the room list arrives,
+            // usually within the second.
             player.Message(MessageHud.MessageType.Center, message);
-
-            if (success)
-            {
-                player.Message(MessageHud.MessageType.TopLeft,
-                    "The old layout is still drawn until you leave and return to this area.");
-            }
         }
     }
 }

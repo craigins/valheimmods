@@ -329,6 +329,18 @@ namespace CraiginsValheimMod.Dungeons
                 zdo.SetOwner(ZDOMan.GetSessionID());
             }
 
+            // The layout seed we pass is not the only seed in play. PlaceRoom seeds each room's
+            // RandomSpawn/RandomObject picks - which platform, which pile of bones - from the
+            // room's position plus, when m_addBaseSeedToRandomSpawn is set, GetSeed(). Every
+            // client redraws those picks itself from its own GetSeed(), which on an instance
+            // built from a ZDO is the position-derived value. GetSeed() on THIS instance must
+            // return the same thing, and it won't once m_hasGeneratedSeed is set: Generate()
+            // stores our layout seed in m_generatedSeed first, and a live generator that has
+            // been asked for its seed before would hand that straight back. So make it derive
+            // the seed afresh. A transient is fresh already; a live one may not be.
+            dungeon.m_hasGeneratedSeed = false;
+            DungeonGenerator.m_forceSeed = int.MinValue;
+
             if (handle.Transient)
             {
                 ZNetView.StartGhostInit();
@@ -344,11 +356,9 @@ namespace CraiginsValheimMod.Dungeons
             else
             {
                 dungeon.Generate(seed, ZoneSystem.SpawnMode.Full);
+                // Its shells are the new ones now; don't let the refresher redraw them.
+                DungeonShellRefresh.MarkCurrent(dungeon);
             }
-
-            // Keep GetSeed() (and vanilla's 'printseeds') honest about what actually built this
-            // dungeon, instead of reporting the position-derived seed it no longer used.
-            dungeon.m_hasGeneratedSeed = true;
 
             return new Result
             {

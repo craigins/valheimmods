@@ -48,7 +48,7 @@ namespace CraiginsValheimMod.Dungeons
             "dungeon can be targeted, loaded or not. " +
             "Player-built pieces inside are kept unless 'wipebuilt'; dropped items are always swept. " +
             "Refuses while anyone is inside, or while the biome's boss is alive per Dungeons.ResetBossGate, " +
-            "unless 'force'. IMPORTANT: connected clients keep showing the old " +
+            "unless 'force'. Clients with this mod redraw the rooms at once; clients without it keep the old " +
             "rooms until they leave and re-enter the zone.";
 
         public override bool OnlyServer => true;
@@ -302,9 +302,9 @@ namespace CraiginsValheimMod.Dungeons
 
             if (ZNet.instance.GetPeers().Count > 0)
             {
-                Print("resetdungeon: connected clients still have the OLD room geometry cached and won't see the " +
-                      "new layout until they leave and re-enter the zone. Their contents are already gone, so " +
-                      "until then it'll look like an empty version of the old dungeon.");
+                Print("resetdungeon: clients running this mod redraw the rooms within a second of the new layout " +
+                      "reaching them. A client WITHOUT it keeps the old room geometry until it leaves and " +
+                      "re-enters the zone, around the new contents.");
             }
 
             Print("resetdungeon: run 'save' if you want this on disk before the next autosave.");

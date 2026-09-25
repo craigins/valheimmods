@@ -349,15 +349,23 @@ first is what `DungeonInterior` is for.
 
 ### Limits worth knowing before you use it
 
-- **Only dungeons in a currently loaded zone can be targeted.** A `DungeonGenerator` exists as
-  a GameObject only while its zone is live, and there's no supported way to ask `ZoneSystem`
-  for an arbitrary one. Go stand at the dungeon you want; `resetdungeon list all` tells you
-  where the others are.
-- **Connected clients keep showing the old rooms** until they leave and re-enter the zone.
-  `DungeonGenerator.Load()` runs only in `Awake` and nothing pushes a "your layout changed"
-  message. Their *contents* are destroyed immediately, so in between it looks like an emptied
-  version of the old dungeon. The command refuses to run while anyone is inside (`force`
-  overrides) because they'd otherwise be left standing in a stale copy 5000m above the map.
+- **A dungeon's contents and its walls reach clients by different routes.** The contents are
+  ZDOs and update within a frame. The room shells are plain prefabs each machine places for
+  itself in `DungeonGenerator.Awake` from the saved room list, and vanilla never re-reads that
+  list - so a client that already had the dungeon loaded would keep the old walls around the
+  new contents (chests floating where the old layout had no platform). `DungeonShellRefresh`
+  fixes that for clients running this mod: it watches the generator's ZDO revision, and when
+  the room data changes it re-runs vanilla's own load path (`Clear`, `Load`,
+  `LoadRoomPrefabsAsync`), so the new rooms appear within about a second. **Clients without
+  the mod** keep the old rooms until they leave and re-enter the zone. The command refuses to
+  run while anyone is inside (`force` overrides) because they'd otherwise be left standing in
+  a stale copy 5000m above the map.
+- **Room decoration is seeded by position, not by the layout seed.** Which platform, pile of
+  bones or torch a room gets comes from `RandomSpawn`, seeded in `PlaceRoom` from the room's
+  position (plus `GetSeed()` when `m_addBaseSeedToRandomSpawn` is set). Every client redraws
+  those picks from its own position-derived seed, so the reset makes sure the rebuilding
+  generator derives its seed the same way rather than handing back the layout seed - otherwise
+  the server would spawn a chest for a platform the clients don't draw.
 - **Loot and monsters reroll too**, not just walls - `RandomSpawn.Randomize` is driven by a
   per-room seed derived from room position.
 - **Player-built pieces inside are kept** by default, identified by the `creator` ZDO field
