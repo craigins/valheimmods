@@ -20,7 +20,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
-    <PackageReference Include="JotunnLib" Version="2.30.0" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" />
   </ItemGroup>
 
   <!-- Unlike the instances plugin, no reference to the base mod: gates are built entirely on

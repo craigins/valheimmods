@@ -1,7 +1,7 @@
 # What's done vs. what needs you
 
 ## Done
-- BepInEx 5.4.2350 (`denikson-BepInExPack_Valheim`) and Jotunn 2.30.0
+- BepInEx 5.4.2351 (`denikson-BepInExPack_Valheim`) and Jotunn 2.30.2
   (`ValheimModding-Jotunn`) installed into the vanilla game install named by
   `ValheimInstallDir` in `LocalPaths.props`, via `tools/install-bepinex.ps1` and
   `tools/install-jotunn.ps1`. Both are runtime installs and are separate from the NuGet

@@ -32,7 +32,7 @@
          so Harmony patches and Jotunn can see everything without editing the game's DLL on disk. -->
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
     <!-- Valheim modding library: custom items/pieces/recipes, RPC helpers, config sync, dialogs, etc. -->
-    <PackageReference Include="JotunnLib" Version="2.30.0" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" />
   </ItemGroup>
 
   <Target Name="EnsureValheimInstall" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(ValheimManagedDir)')">

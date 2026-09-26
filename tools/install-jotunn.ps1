@@ -20,7 +20,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ValheimPath,
 
-    [string]$Version = "2.30.0"
+    [string]$Version = "2.30.2"
 )
 
 $ErrorActionPreference = 'Stop'

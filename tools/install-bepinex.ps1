@@ -9,7 +9,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ValheimPath,
 
-    [string]$Version = "5.4.2350"
+    [string]$Version = "5.4.2351"
 )
 
 if (-not (Test-Path (Join-Path $ValheimPath "valheim.exe"))) {
