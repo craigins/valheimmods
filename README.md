@@ -27,7 +27,11 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       roll as normal. Both settings apply live from the config. `WispLightClearsFog` (off by
       default) removes weather fog entirely, in any biome, while the local player has a
       Wisplight equipped - detected via its `SE_Demister` status effect, so placed wisp torches
-      don't count - with a short fade (`WispLightFogFadeSeconds`) on equip/unequip. **Wisp
+      don't count - with a short fade (`WispLightFogFadeSeconds`) on equip/unequip.
+      `AshlandsBrightness` (default 1, vanilla) is a multiplier on the ambient light, sun and
+      moon light and fog colour of every Ashlands weather, for making the biome brighter or
+      darker; around 1.5 gives Meadows-like days and 2 to 3 Meadows-like nights. It applies
+      live and only affects your own view. **Wisp
       light radius has no implementation** - no source for it was found in the archive, so it
       still needs to be built (or found) from scratch.
     - `QualityOfLifePatches.cs` - craft-anywhere, no death penalty, disable random events (off

@@ -37,6 +37,20 @@ namespace CraiginsValheimMod.Patches
     /// Only the equippable counts - placed wisp torches are Demister components with no
     /// status effect, so they don't trigger this.
     ///
+    /// AshlandsBrightness: the Ashlands are dark because their four weathers are lit dimly, not
+    /// because of fog or m_alwaysDark (which is off on all four). Against Meadows "Clear" the
+    /// sun colour is about half as bright (0.52/0.38/0.31 vs 1.0/0.77/0.48 by day), the night
+    /// light intensity is 0.4-0.6 instead of 1.0, and night ambient is ~0.30 luminance instead
+    /// of 0.37. Net, the usual weather (Ashlands_ashrain) gets about two thirds of Meadows'
+    /// direct sunlight and about a third of its moonlight - full table in
+    /// docs/GAME_CONSTANTS.md. The setting is one multiplier over each
+    /// weather's ambient colour, sun/moon light intensity and fog colours, day and night, so
+    /// the whole scene moves together like an exposure change and the hue stays Ashlands red.
+    /// Fog colour is included on purpose: brightening only the lights leaves a lit foreground
+    /// against a haze that is still dark. Fog density, clouds and weather effects are left
+    /// alone. 1 is vanilla. Caught in the same place and kept reversible the same way as the
+    /// Mistlands fog above.
+    ///
     /// No trace of a "wisp light radius" patch was found anywhere in the archived sources
     /// (source repos, decompiled reference project, or built plugin DLLs) - only this mist toggle and
     /// an unrelated "Death Recorder" mod. If you built that one before, it either wasn't saved
@@ -103,16 +117,22 @@ namespace CraiginsValheimMod.Patches
         {
             private static void Postfix(BiomeEnvSetup biomeEnv)
             {
-                if (biomeEnv.m_biome != Heightmap.Biome.Mistlands)
+                if (biomeEnv.m_biome == Heightmap.Biome.Mistlands)
                 {
-                    return;
+                    foreach (EnvEntry entry in biomeEnv.m_environments)
+                    {
+                        MistlandsFog.Track(entry.m_env);
+                    }
+                    MistlandsFog.Apply();
                 }
-
-                foreach (EnvEntry entry in biomeEnv.m_environments)
+                else if (biomeEnv.m_biome == Heightmap.Biome.AshLands)
                 {
-                    MistlandsFog.Track(entry.m_env);
+                    foreach (EnvEntry entry in biomeEnv.m_environments)
+                    {
+                        AshlandsLight.Track(entry.m_env);
+                    }
+                    AshlandsLight.Apply();
                 }
-                MistlandsFog.Apply();
             }
         }
 
@@ -150,6 +170,75 @@ namespace CraiginsValheimMod.Patches
                     env.m_fogDensityDay = on ? density : vanilla[2];
                     env.m_fogDensityEvening = on ? density : vanilla[3];
                 }
+            }
+        }
+
+        /// <summary>
+        /// The Ashlands weather EnvSetups and their vanilla lighting, so the brightness
+        /// multiplier is always applied to the original values and is reversible at runtime.
+        /// </summary>
+        internal static class AshlandsLight
+        {
+            private sealed class Vanilla
+            {
+                public Color AmbNight, AmbDay;
+                public float LightDay, LightNight;
+                public Color FogNight, FogMorning, FogDay, FogEvening;
+                public Color FogSunNight, FogSunMorning, FogSunDay, FogSunEvening;
+            }
+
+            private static readonly Dictionary<EnvSetup, Vanilla> Tracked = new Dictionary<EnvSetup, Vanilla>();
+
+            public static void Track(EnvSetup env)
+            {
+                if (env == null || Tracked.ContainsKey(env))
+                {
+                    return;
+                }
+                Tracked[env] = new Vanilla
+                {
+                    AmbNight = env.m_ambColorNight,
+                    AmbDay = env.m_ambColorDay,
+                    LightDay = env.m_lightIntensityDay,
+                    LightNight = env.m_lightIntensityNight,
+                    FogNight = env.m_fogColorNight,
+                    FogMorning = env.m_fogColorMorning,
+                    FogDay = env.m_fogColorDay,
+                    FogEvening = env.m_fogColorEvening,
+                    FogSunNight = env.m_fogColorSunNight,
+                    FogSunMorning = env.m_fogColorSunMorning,
+                    FogSunDay = env.m_fogColorSunDay,
+                    FogSunEvening = env.m_fogColorSunEvening,
+                };
+            }
+
+            /// <summary>Re-applies the current config to every tracked weather. Safe to call any time.</summary>
+            public static void Apply()
+            {
+                float b = Mathf.Max(0f, Plugin.AshlandsBrightness.Value);
+                foreach (KeyValuePair<EnvSetup, Vanilla> pair in Tracked)
+                {
+                    EnvSetup env = pair.Key;
+                    Vanilla v = pair.Value;
+                    env.m_ambColorNight = Scale(v.AmbNight, b);
+                    env.m_ambColorDay = Scale(v.AmbDay, b);
+                    env.m_lightIntensityDay = v.LightDay * b;
+                    env.m_lightIntensityNight = v.LightNight * b;
+                    env.m_fogColorNight = Scale(v.FogNight, b);
+                    env.m_fogColorMorning = Scale(v.FogMorning, b);
+                    env.m_fogColorDay = Scale(v.FogDay, b);
+                    env.m_fogColorEvening = Scale(v.FogEvening, b);
+                    env.m_fogColorSunNight = Scale(v.FogSunNight, b);
+                    env.m_fogColorSunMorning = Scale(v.FogSunMorning, b);
+                    env.m_fogColorSunDay = Scale(v.FogSunDay, b);
+                    env.m_fogColorSunEvening = Scale(v.FogSunEvening, b);
+                }
+            }
+
+            /// <summary>Scales the colour channels only; Color * float would scale alpha too.</summary>
+            private static Color Scale(Color c, float b)
+            {
+                return new Color(c.r * b, c.g * b, c.b * b, c.a);
             }
         }
 

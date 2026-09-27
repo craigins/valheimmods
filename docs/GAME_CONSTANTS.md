@@ -262,3 +262,28 @@ Density is night / morning / day / evening; weight is the share of the biome's w
 | SunkenCrypt, DN_Bossroom | interior | 0.20 flat | no |
 
 0.15 (Misty at night) is the heaviest outdoor fog the game ships; 0.2 exists only in interiors.
+
+## Ashlands lighting (EnvSetup, game 1.0.16)
+
+Why the Ashlands are dark. None of the four weathers sets `m_alwaysDark`, and their fog is
+no denser than ordinary rain - the biome is simply lit dimly. Same source as the fog table
+above (`_LocationList_Ashlands`, bundle `d59cfac`). Meadows `Clear` is given for comparison.
+
+Colours are r / g / b. "Direct" is light intensity times the luminance of the sun colour
+(0.2126 r + 0.7152 g + 0.0722 b), which is what actually lands on a surface.
+
+| Weather | Weight | Ambient day | Ambient night | Light day / night | Sun colour day | Sun colour night | Direct day / night |
+|---|---|---|---|---|---|---|---|
+| Ashlands_ashrain | 1.5 | 0.67 / 0.46 / 0.43 | 0.20 / 0.33 / 0.34 | 2.2 / 0.4 | 0.52 / 0.38 / 0.31 | 0.17 / 0.37 / 0.63 | 0.90 / 0.14 |
+| Ashlands_CinderRain | 0.2 | 0.41 / 0.44 / 0.48 | 0.36 / 0.27 / 0.25 | 1.6 / 0.5 | 0.49 / 0.20 / 0.18 | 0.42 / 0.45 / 0.56 | 0.41 / 0.22 |
+| Ashlands_misty | 0.1 | 0.50 / 0.54 / 0.58 | 0.20 / 0.33 / 0.33 | 1.0 / 0.6 | 0.52 / 0.44 / 0.34 | 0.49 / 0.52 / 0.66 | 0.45 / 0.32 |
+| Ashlands_storm | 0.05 | 0.41 / 0.44 / 0.48 | 0.36 / 0.27 / 0.25 | 1.5 / 1.5 | 0.49 / 0.20 / 0.18 | 0.42 / 0.45 / 0.56 | 0.39 / 0.67 |
+| Clear (Meadows) | - | 0.46 / 0.57 / 0.71 | 0.36 / 0.37 / 0.49 | 1.7 / 1.0 | 1.00 / 0.77 / 0.48 | 0.36 / 0.38 / 0.49 | 1.36 / 0.39 |
+
+Ambient luminance is 0.44-0.54 by day and 0.29-0.31 by night in the Ashlands, against 0.56
+and 0.37 for `Clear`. So the usual weather, ashrain, has about two thirds of Meadows' direct
+sunlight and about a third of its moonlight, with ambient only 10-20% lower. The other three
+weathers are darker by day: under half of Meadows' direct light.
+
+`AshlandsBrightness` multiplies the ambient colours, both light intensities and all eight fog
+colours of these four weathers. Fog density, sun colour and cloud opacity are not changed.

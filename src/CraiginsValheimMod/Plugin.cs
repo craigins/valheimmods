@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.8";
+        public const string ModVersion = "0.6.9";
 
         public static Plugin Instance { get; private set; }
 
@@ -23,6 +23,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<float> MistlandsFogDensity;
         public static ConfigEntry<bool> WispLightClearsFog;
         public static ConfigEntry<float> WispLightFogFadeSeconds;
+        public static ConfigEntry<float> AshlandsBrightness;
 
         public static ConfigEntry<bool> CraftAnywhere;
         public static ConfigEntry<bool> NoDeathPenalty;
@@ -81,8 +82,19 @@ namespace CraiginsValheimMod
                 new ConfigDescription(
                     "Seconds the fog takes to fade out/in when the Wisplight is equipped/unequipped.",
                     new AcceptableValueRange<float>(0.01f, 10f)));
+            AshlandsBrightness = Config.Bind(
+                "Atmosphere", "AshlandsBrightness", 1f,
+                new ConfigDescription(
+                    "How bright the Ashlands are, as a multiplier on the ambient light, sun and moon light " +
+                    "and fog colour of every Ashlands weather, day and night. 1 is vanilla, above 1 is " +
+                    "brighter, below 1 is darker. For scale: the usual Ashlands weather has about two " +
+                    "thirds of the sunlight and about a third of the moonlight of clear Meadows weather, " +
+                    "so around 1.5 gives Meadows-like days and 2 to 3 gives Meadows-like nights. Applies " +
+                    "to your own view only, and takes effect as soon as the setting changes.",
+                    new AcceptableValueRange<float>(0.1f, 4f)));
             FixedMistlandsFog.SettingChanged += (_, __) => Patches.AtmospherePatches.MistlandsFog.Apply();
             MistlandsFogDensity.SettingChanged += (_, __) => Patches.AtmospherePatches.MistlandsFog.Apply();
+            AshlandsBrightness.SettingChanged += (_, __) => Patches.AtmospherePatches.AshlandsLight.Apply();
 
             CraftAnywhere = Config.Bind(
                 "QualityOfLife", "CraftAnywhere", true,
