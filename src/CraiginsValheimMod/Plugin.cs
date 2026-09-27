@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.6";
+        public const string ModVersion = "0.6.7";
 
         public static Plugin Instance { get; private set; }
 
@@ -98,7 +98,8 @@ namespace CraiginsValheimMod
                 "Stops weather from damaging indoor building pieces.");
             PlantAnywhere = Config.Bind(
                 "QualityOfLife", "PlantAnywhere", true,
-                "Removes the growth-space/roof/proximity checks on planted crops.");
+                "Removes the growth-space/roof/proximity checks on planted crops. Vine saplings " +
+                "(vineberry, ivy) still need a wall within reach, since that is where the vine grows.");
             NoFoodDecay = Config.Bind(
                 "QualityOfLife", "NoFoodDecay", true,
                 "Keeps food at its full HP/stamina/eitr benefit for its whole duration instead of vanilla's " +

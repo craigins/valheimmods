@@ -100,14 +100,39 @@ namespace CraiginsValheimMod.Patches
             }
         }
 
+        /// <summary>
+        /// Replaces vanilla's health check so biome, cultivated ground, heat/cold, roof and
+        /// spacing never hold a plant back.
+        ///
+        /// Vanilla UpdateHealth is not only a status check, though. For plants that attach to a
+        /// building piece (m_attachDistance > 0: VineAsh_sapling and VineGreen_sapling, both 1.8)
+        /// its last step is
+        ///     GetClosestAttachPosRot(out m_attachPos, out m_attachRot, out m_attachNormal)
+        /// and those three fields are where Grow() then spawns the vine. Skipping vanilla
+        /// outright left them zeroed, so after the 200-300 s grow time the vine was created at
+        /// the world origin - where Vine.CheckSupport found no wall and deleted it - while the
+        /// sapling was destroyed as usual. The plant just vanished. So the wall lookup is kept:
+        /// a vine has nowhere to grow without one, and with m_destroyIfCantGrow off the sapling
+        /// simply waits, showing "needs a wall", until there is one.
+        /// </summary>
         [HarmonyPatch(typeof(Plant), nameof(Plant.UpdateHealth))]
         private static class PlantUpdateHealth_Patch
         {
-            private static bool Prefix(Plant __instance)
+            private static bool Prefix(Plant __instance, double timeSincePlanted)
             {
                 if (!Plugin.PlantAnywhere.Value)
                 {
                     return true;
+                }
+
+                // Same 10 s grace vanilla gives a fresh plant, before it runs any check.
+                if (timeSincePlanted >= 10.0
+                    && __instance.m_attachDistance > 0f
+                    && !__instance.GetClosestAttachPosRot(
+                        out __instance.m_attachPos, out __instance.m_attachRot, out __instance.m_attachNormal))
+                {
+                    __instance.m_status = Plant.Status.NoAttachPiece;
+                    return false;
                 }
 
                 __instance.m_status = Plant.Status.Healthy;
