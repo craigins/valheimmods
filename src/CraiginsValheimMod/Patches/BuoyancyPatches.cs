@@ -25,9 +25,24 @@ namespace CraiginsValheimMod.Patches
     /// This version instead adds Floating in a Postfix on ItemDrop.Awake, on the same
     /// GameObject, after ItemDrop has already set up its own Rigidbody/ZNetView/collider. That
     /// means Floating.Awake()'s own GetComponent&lt;Rigidbody&gt;()/GetComponent&lt;ZNetView&gt;()
-    /// calls just work - no manual field patching, no parent walking, no timing races. Verified
-    /// against the current assembly_valheim.dll: ItemDrop.Awake always sets up m_nview when a
-    /// Rigidbody is present, matching what Floating expects.
+    /// calls just work - no manual field patching, no parent walking, no timing races.
+    ///
+    /// Only items with a live ZNetView get one, though. Floating never null-checks m_nview:
+    /// CustomFixedUpdate and TerrainCheck both open with m_nview.IsValid(). And not every
+    /// ItemDrop has a ZNetView - the 224 creature attack "items" (Greydwarf_throw,
+    /// BonemawSerpent_spit, ...) are ItemDrop + Rigidbody and nothing else. Those mostly exist
+    /// only as same-frame temp copies (Humanoid.GiveDefaultItems), but BonemawSerpent_spit lists
+    /// the GoblinShaman_attack_fireball item prefab as an m_startEffect and an m_triggerEffect,
+    /// so every spit leaves two live copies in the world. With a Floating on them they threw a
+    /// NullReferenceException every physics tick, and MonoUpdaters.FixedUpdate has no
+    /// try/catch: Floating runs before Ship, BaseAI and Character, so one throwing Floating
+    /// stops all of those. The ship lost buoyancy and sank, and characters stopped moving
+    /// properly, until a relog cleared the stray objects.
+    ///
+    /// IsValid() rather than a bare null check also skips the temp copies and placement ghosts
+    /// made under ZNetView.m_forceDisableInit, which have nothing to float. It is safe to ask
+    /// here: vanilla ItemDrop.Awake itself gates Load() and its RPC registration on
+    /// m_nview.IsValid(), so the ZNetView is already initialised by the time this postfix runs.
     /// </summary>
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Awake))]
     internal static class ItemDropAwake_Patch
@@ -43,6 +58,12 @@ namespace CraiginsValheimMod.Patches
             // GetComponent<Rigidbody>()) - skip anything that doesn't have one rather than
             // adding a component that would silently do nothing.
             if (__instance.GetComponent<Rigidbody>() == null)
+            {
+                return;
+            }
+
+            ZNetView nview = __instance.GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid())
             {
                 return;
             }
