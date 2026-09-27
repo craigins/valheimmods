@@ -66,6 +66,17 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       the duration of the call and restored in a finalizer, so toggling the config off takes
       effect immediately, on already-spawned animals too. Feeding and the partner check are
       deliberately left vanilla.
+    - `TamingPatches.cs` - `TamingSpeedMultiplier` (default 3). Not a port - new. Every
+      tameable animal ships the same 30 minute `m_tamingTime`; this scales the 3 second tick
+      in `Tameable.DecreaseRemainingTime`, so 3 means a 10 minute tame. Animals part-way
+      through keep their progress. Feeding, calm and somebody-nearby are left vanilla, and the
+      tamer mead's doubling stacks on top. Applied by whoever's game runs the animal, so
+      everyone near the pen needs it.
+    - `RestingPatches.cs` - `RestingHealthRegenMultiplier` (default 2). Not a port - new.
+      Multiplies health regeneration while the player has the Resting effect (near a fire,
+      sitting or sheltered, unnoticed), for healing up after a respawn. The carried Rested
+      buff, stamina and eitr are untouched. Regeneration is still driven by eaten food.
+      Per-player; the server does not need it.
     - `ForestryPatches.cs` - `SeedsFromStumps`. Not a port - new. Moves tree seeds off the tree
       and onto its stump: felling drops no seeds, destroying the stump always drops one, so
       sustainable forestry means clearing your stumps. All four drop paths (`TreeBase`,
@@ -92,6 +103,39 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       then published with `ZSyncTransform.SyncNow()` (other clients snap rather than interpolate
       past 5m). Client-side only - no server support needed. Harpooned players are skipped, since
       their character is owned by the person playing it.
+    - `HarpoonTamedPatches.cs` - `HarpoonNoDamageToTamed` and `HarpoonHitsTamedWithoutPvP`. Not
+      a port - new. For dragging a tamed animal on the harpoon without hurting it. The line and
+      the wound are the same hit: `RPC_Damage` attaches `SE_Harpooned` from the hit's
+      `m_statusEffectHash` and applies its damage in one go. The first setting is a prefix on
+      `Character.Damage` that empties `m_damage` when the hit carries a harpoon effect and the
+      target is tamed, leaving the status effect and push force alone; with nothing to apply,
+      `ApplyDamage` returns before the damage text, stagger and `OnDamaged`. The second is a
+      postfix on `Projectile.IsValidTarget`: the harpoon projectile ships with `m_hitFriendly`
+      off, so in vanilla it flies through a tamed animal unless the thrower has PvP on, and
+      this accepts tamed animals as targets either way. Both run on the thrower's machine, so
+      only the thrower needs the mod. Wild creatures and players are hit as normal.
+    - `GrapplingHookPatches.cs` - `GrapplingHookNoReload`. Not a port - new. The grappling
+      hook's primary attack has `m_requiresReload` set, like a crossbow: firing unloads it, and
+      `Player.UpdateWeaponLoading` queues a 2 second reload that cannot even start until the
+      pull has ended (`m_grappling`) and 1.1 seconds have passed since the shot
+      (`m_blockReload`). A prefix on `UpdateWeaponLoading` marks the hook loaded through the
+      game's own `SetWeaponLoaded` and skips the original, so no reload is ever queued. Stamina
+      cost and the attack animation are untouched. The hook is recognised by its projectile
+      leaving a `GrapplingPoint` behind, so crossbows and the lightning staff keep their reload.
+      Client-side only - no server support needed.
+    - `VinePatches.cs` - `VineberryIgnoresAdjacency` and `IvyIgnoresAdjacency`. Not a port -
+      new. Every segment of a vine grows berries. Vanilla's `Vine.CheckBerryBlocker` lets a
+      segment fruit only if fewer than `m_maxBerriesWithinBlocker` other segments in a box around
+      it have berries (about 3 m sideways, 5 m up or down) and only if it knows of two
+      neighbours; that knowledge is never saved, so it is lost on every reload, and a failed
+      check restarts the 200 minute timer. A prefix answers the check itself, so neither rule
+      applies. The respawn time is unchanged, and a segment younger than its respawn time is
+      still refused, which is what vanilla's always-failing first check amounted to. Ivy's limit
+      is zero, so in vanilla it never fruits; with its setting on it grows vineberries and can
+      drop ivy seeds. Its prefab points `m_hideWhenPicked` at the vineberry prefab's berries
+      instead of its own, so a `ZNetScene.Awake` postfix repoints it. Applied by whoever's game
+      runs the vine, so everyone near the vines needs it. See **Vines** in
+      `docs/GAME_CONSTANTS.md`.
     - `SmelterPatches.cs` - `BlastFurnaceSmeltsAll`. New. The blast furnace also smelts
       everything the regular smelter does. Everything that decides what a `Smelter` accepts, and
       what it makes, reads its `m_conversion` list. So a `ZNetScene.Awake` postfix copies the
@@ -130,7 +174,8 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
   in that folder for how it sits on vanilla portal machinery (verified against 1.0.7).
   `StargatePlugin.cs` is its entry point, `StargatePiece.cs` the piece and the patches that keep
   gates out of vanilla pairing, `StargateAddress.cs` the addressing, `StargateNetwork.cs` the
-  server-side dialing, `StargatePatches.cs` the hover text and interaction.
+  server-side dialing, `StargatePatches.cs` the hover text and interaction,
+  `StargateSignPatches.cs` dialing from a sign.
 - `docs/GAME_CONSTANTS.md` - world extent, player movement, equipment modifiers and boat
   physics values extracted from the game (2026-02-19 build), plus how to re-extract them.
   Prefab-serialized tuning values are **not** in the DLL, so a decompiler alone gives wrong
@@ -478,12 +523,24 @@ server, since it adds a piece.
 [Shift+E]  Disconnect  - from either end of a link
 ```
 
+On a sign near a gate:
+
+```
+[Shift+E]  Dial        - the address written on the sign, e.g. "Misty3 S58-ELN" dials S58-ELN
+```
+
 - **Links don't time out.** Two dialed gates stay linked until either end disconnects.
 - **An incoming connection wins.** If a third gate dials one of them, that gate drops its old link,
   and the gate it was linked to goes idle too. So a timer never has to run on a gate that nobody
   has loaded.
 - **Addresses are learned by visiting.** Hovering a gate shows its address. `stargate list` (needs
   `devcommands`) prints every gate in the world with its link.
+- **Signs can dial.** Write a name, a space and an address on a sign, and Shift+E on it dials
+  that address on the nearest gate within `SignDialRange` (10 m) of the sign. Only the part
+  after the first space is read. Colours and other rich text tags are removed first, so a
+  coloured sign reads the same as a plain one. A sign with no address on it is untouched, and
+  plain E always edits. Turn it off with `SignDial`. This is client-side: the server's copy of
+  the plugin does not need updating for it.
 - **Dialing works across the map.** The server holds every gate's ZDO, so it can link a gate that
   nobody is anywhere near.
 

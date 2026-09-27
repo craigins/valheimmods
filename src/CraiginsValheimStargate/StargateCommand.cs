@@ -16,7 +16,8 @@ namespace CraiginsValheimMod.Stargate
 
         public override string Help =>
             "Lists every stargate in the world with its address, position and link. Usage: stargate list. " +
-            "Dial and disconnect at the gate itself: E to dial, Shift+E to disconnect.";
+            "Dial and disconnect at the gate itself: E to dial, Shift+E to disconnect. " +
+            "Shift+E on a sign reading 'Name ABC-DEF' dials that address on the nearest gate.";
 
         public override bool IsCheat => true;
 

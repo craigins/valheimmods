@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.6.9";
+        public const string ModVersion = "0.7.0";
 
         public static Plugin Instance { get; private set; }
 
@@ -36,7 +36,14 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> UnlimitedBreeding;
         public static ConfigEntry<bool> SeedsFromStumps;
         public static ConfigEntry<bool> HarpoonTeleport;
+        public static ConfigEntry<bool> HarpoonNoDamageToTamed;
+        public static ConfigEntry<bool> HarpoonHitsTamedWithoutPvP;
+        public static ConfigEntry<bool> GrapplingHookNoReload;
         public static ConfigEntry<bool> BlastFurnaceSmeltsAll;
+        public static ConfigEntry<bool> VineberryIgnoresAdjacency;
+        public static ConfigEntry<bool> IvyIgnoresAdjacency;
+        public static ConfigEntry<float> RestingHealthRegenMultiplier;
+        public static ConfigEntry<float> TamingSpeedMultiplier;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -144,6 +151,27 @@ namespace CraiginsValheimMod
                 "Client-side and needs no server support: it works by moving a creature your own " +
                 "client already owns, which a harpooned one is unless another player is standing " +
                 "closer. Harpooned players are left alone, and bosses can't be harpooned at all.");
+            HarpoonNoDamageToTamed = Config.Bind(
+                "QualityOfLife", "HarpoonNoDamageToTamed", true,
+                "The harpoon does no damage to tamed animals but still attaches to them, so you can " +
+                "drag one without hurting it. The animal is still nudged by the impact. Wild " +
+                "creatures and players are hit as normal. Only the person throwing the harpoon " +
+                "needs this; the server does not.");
+            HarpoonHitsTamedWithoutPvP = Config.Bind(
+                "QualityOfLife", "HarpoonHitsTamedWithoutPvP", true,
+                "Lets your harpoon hook tamed animals while your PvP is off. In vanilla a harpoon " +
+                "flies straight through a tamed animal unless you have PvP enabled, so without this " +
+                "you have to turn PvP on before you can hook one. Turn it off if you would rather " +
+                "your harpoon kept passing through your animals to reach what is behind them. Only " +
+                "the person throwing the harpoon needs this; the server does not.");
+            GrapplingHookNoReload = Config.Bind(
+                "QualityOfLife", "GrapplingHookNoReload", true,
+                "The grappling hook never needs reloading, so it is ready to fire again at once - " +
+                "including while you are still being pulled, which starts a new pull and drops the " +
+                "old one. In vanilla it reloads for 2 seconds, and only once the pull has ended. " +
+                "Each shot still costs its stamina. The hook is always drawn loaded in the " +
+                "launcher. Crossbows and the lightning staff still reload. Affects only your own " +
+                "character; the server does not need it.");
             BlastFurnaceSmeltsAll = Config.Bind(
                 "QualityOfLife", "BlastFurnaceSmeltsAll", true,
                 "Lets the blast furnace smelt everything the regular smelter does (copper, tin, iron, " +
@@ -153,6 +181,42 @@ namespace CraiginsValheimMod
                 "dedicated server, which runs furnaces near the world centre when nobody is close and " +
                 "would otherwise use up the queued ore without making bars. Read when the " +
                 "world loads, so a change needs you to rejoin.");
+            VineberryIgnoresAdjacency = Config.Bind(
+                "QualityOfLife", "VineberryIgnoresAdjacency", true,
+                "Every segment of a vineberry vine grows berries. In vanilla a segment only fruits " +
+                "if no other segment with berries is within about 3 m sideways or 5 m above or " +
+                "below it on the same wall, and only if it has two neighbouring segments - so a " +
+                "whole plant carries one cluster at a time. Both rules are removed. The respawn " +
+                "time is unchanged: each segment fruits once every 200 minutes, and a newly grown " +
+                "segment waits that long for its first berries. Whoever's game is running the vine " +
+                "applies this - normally the nearest player - so everyone near the vines needs " +
+                "the same value.");
+            IvyIgnoresAdjacency = Config.Bind(
+                "QualityOfLife", "IvyIgnoresAdjacency", true,
+                "The same for ivy. In vanilla ivy never grows berries, because it allows no " +
+                "berries at all near a segment. With this on, every ivy segment grows vineberries " +
+                "on the same 200 minute timer, and picking them can also drop ivy seeds. Turn it " +
+                "off to keep ivy purely decorative. Everyone near the ivy needs the same value, " +
+                "and players without the mod will not see the berries on it.");
+            RestingHealthRegenMultiplier = Config.Bind(
+                "QualityOfLife", "RestingHealthRegenMultiplier", 2f,
+                new ConfigDescription(
+                    "Multiplies health regeneration while you have the Resting effect - near a fire and " +
+                    "either sitting or under shelter, with no enemy aware of you. 1 is vanilla, 2 heals " +
+                    "twice as fast. For getting back to full health after a respawn. The Rested buff you " +
+                    "carry around afterwards is not changed, and neither are stamina or eitr. Health " +
+                    "regeneration comes from the food you have eaten, so you still need to eat. Affects " +
+                    "only your own character.",
+                    new AcceptableValueRange<float>(1f, 20f)));
+            TamingSpeedMultiplier = Config.Bind(
+                "QualityOfLife", "TamingSpeedMultiplier", 3f,
+                new ConfigDescription(
+                    "How fast animals tame. 1 is vanilla, which is 30 minutes for every animal; 3 makes it " +
+                    "10 minutes. Animals still have to be fed and calm, with someone nearby. Stacks with the " +
+                    "tamer mead, which doubles it again. Whoever's game is running the animal applies " +
+                    "this - normally the nearest player - so everyone near the pen needs the same value, " +
+                    "and so does a dedicated server for a pen near the world centre.",
+                    new AcceptableValueRange<float>(0.1f, 100f)));
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,

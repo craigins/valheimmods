@@ -287,3 +287,154 @@ weathers are darker by day: under half of Meadows' direct light.
 
 `AshlandsBrightness` multiplies the ambient colours, both light intensities and all eight fog
 colours of these four weathers. Fog density, sun colour and cloud opacity are not changed.
+
+## Resting, Rested and health regeneration (game 1.0.16)
+
+`Player.UpdateFood` heals every 10 s by the sum of `m_foodRegen` over the foods eaten, times
+the multiplier from `SEMan.ModifyHealthRegen`. No food eaten means no regeneration at all.
+`SE_Stats.ModifyHealthRegen` is additive above 1 (`mult += m - 1`), so the two effects below
+give x3.5 together, not x4.5.
+
+| Effect | Class | When | Health | Stamina | Eitr | Duration |
+|---|---|---|---|---|---|---|
+| Resting | SE_Cozy | near a fire, sitting or sheltered, unnoticed, not cold / wet / burning | x3 | x4 | x4 | while the conditions hold; grants Rested after 20 s |
+| Rested | SE_Rested | carried afterwards | x1.5 | x2 | x2 | 480 s + 60 s per comfort level above 1 |
+
+`RestingHealthRegenMultiplier` scales the finished health multiplier while Resting is active.
+
+## Taming (Tameable, game 1.0.16)
+
+Every tameable prefab has the same values: Asksvin, Boar, Lox, Moose and Wolf, plus the
+ones that start tamed.
+
+| Field | Value |
+|---|---|
+| `m_tamingTime` | 1800 s |
+| `m_fedDuration` | 600 s (Skeleton_Friendly: 30 s) |
+| tick (`TamingUpdate`) | every 3 s, on the ZDO owner |
+| `m_tamingSpeedMultiplierRange` | 60 m |
+| `m_tamingBoostMultiplier` | 2, per nearby player with the TamingBoost attribute |
+
+The only source of TamingBoost is the tamer mead (`Potion_tamer`, 600 s). The tick only runs
+while the animal is fed, not alerted and loaded. `TamingSpeedMultiplier` scales the tick
+before the mead's boost is applied.
+
+## Harpoon (SpearChitin, game 1.0.16)
+
+Bundle `c4210710`. The code defaults in `SE_Harpooned.cs` are placeholders; the `Harpooned`
+asset overrides most of them.
+
+| Where | Field | Value | Code default |
+|---|---|---|---|
+| SpearChitin `m_shared` | `m_damages` | 10 pierce, nothing per level (`m_maxQuality` 1) | |
+| | `m_attackForce` | 20 | |
+| | `m_backstabBonus` | 1 | |
+| | `m_attackStatusEffect` | `Harpooned`, chance 1 | |
+| | `m_attack.m_projectileVel` | 30 | |
+| projectile_chitinharpoon | `m_hitFriendly` | off | |
+| | `m_noDamageFriendly` | off | |
+| | `m_dodgeable` / `m_blockable` | off / off | |
+| | `m_hitNoise` | 40 | |
+| Harpooned (SE_Harpooned) | `m_maxDistance` | 40 m | 30 |
+| | `m_breakDistance` | 8 m | 4 |
+| | `m_pullSpeed` | 1000 | 5 |
+| | `m_pullForce` / `m_forcePower` | 1 / 2 | 0 / 2 |
+| | `m_staminaDrain` | 0.1 per 0.1 s, times pull and target mass | 10 |
+| | `m_ttl` | 0 (lasts until broken or released) | |
+
+The projectile's own damage, push force and status effect are blank on the prefab;
+`Projectile.Setup` fills them from the weapon's HitData at throw time.
+
+With `m_hitFriendly` off, `Projectile.IsValidTarget` rejects a target that is not the
+thrower's enemy unless the thrower has PvP enabled. A tamed animal is never a player's enemy,
+so a vanilla harpoon passes through tames with PvP off, and hits, damages and hooks them with
+PvP on. `HarpoonHitsTamedWithoutPvP` removes the PvP requirement and
+`HarpoonNoDamageToTamed` removes the damage.
+
+## Vines (Vine + Pickable, game 1.0.16)
+
+Bundle `c4210710`. VineAsh is the vineberry vine, VineGreen is ivy. A vine is a grid of
+segments, each its own prefab instance with its own Pickable.
+
+| Field | VineAsh | VineGreen |
+|---|---|---|
+| `m_size` (segment spacing) | 1.5 m | 1.5 m |
+| `m_maxBerriesWithinBlocker` | 1 | 0 |
+| BerryBlocker box (deep x tall x wide) | 0.44 x 9.11 x 4.86 m | same |
+| `m_growTime` / `m_growTimePerBranch` | 120 s / 120 s | 100 s / 100 s |
+| `m_growCheckTime` | 45 s | 45 s |
+| `m_growCheckChance` / per branch | 0.5 / -0.495 | 0.7 / -0.495 |
+| `m_growChance` | 1 | 1 |
+| `m_closeEndChancePerBranch` / per height / max | 0.973 / 0.305 / 0.98 | same |
+| `m_maxGrowWidth` / per height / ignore chance | 0.8 / 0.25 / 0.291 | same |
+| `m_growSides` / `m_growUp` / `m_growDown` | on / on / off | same |
+| `m_randomOffset` | 0.6 | 0.6 |
+| `m_minScale` / `m_maxScale` | 0.75 / 1.3 | 0.75 / 1.2 |
+| Pickable item, `m_amount` | Vineberry, 3 | Vineberry, 3 |
+| Pickable bonus drop (20%, 1-3 stacks of 1-3) | VineberrySeeds | VineGreenSeeds |
+| `m_respawnTimeMinutes` | 200 | 200 |
+| `m_respawnTimeInitMin` / `Max` | 0 / 150 | 0 / 150 |
+| `m_defaultPicked` | on | on |
+| `m_hideWhenPicked` | its own `Berries` child | VineAsh's `Berries`, not its own |
+
+Saplings (VineAsh_sapling, VineGreen_sapling): `m_growTime` 200-300 s, `m_growRadius` 0.5,
+`m_growRadiusVines` 1.8 (no existing vine within 1.8 m), `m_attachDistance` 1.8, cultivated
+ground required.
+
+How berries are decided (`Vine.CheckBerryBlocker`, run by the segment's owner):
+
+- Pickable checks every 60 s. Once 200 minutes of world time have passed since the picked
+  time, it asks the vine.
+- The vine counts other segments with berries whose colliders overlap the BerryBlocker box.
+  A segment's own collider is 1.2 m square, so another fruiting segment blocks within about
+  3 m sideways and 5 m up or down, on the same wall face. The count must be below
+  `m_maxBerriesWithinBlocker`. Ivy's limit is 0, so ivy never passes.
+- The segment must also know of two or more neighbours. That is `m_vineState`, which is
+  NonSerialized and never in the ZDO. It is set when a segment is grown (the side it grew
+  from) and when `CheckGrow` finds a vine in its block sensor. After a reload only left,
+  right and above can be relearned, because `m_growDown` is off.
+- A failed check calls `Pickable.SetPicked(true)`, which writes the picked time as now. So
+  every failure costs another 200 minutes.
+- A fresh Pickable has no picked time, and `UpdateRespawn` backdates it by a random 0 to
+  15000 minutes (`m_respawnTimeInitMax` x 100). So a new segment is checked within a minute
+  of sprouting, fails for lack of neighbours, and starts its first 200 minutes then.
+- The physics query buffer holds 20 colliders and the mask includes building pieces, so on
+  a crowded wall a fruiting neighbour can be missed.
+
+`VineberryIgnoresAdjacency` and `IvyIgnoresAdjacency` replace the check: a segment passes
+unless it sprouted less than one respawn time ago.
+
+## Grappling hook and reloading weapons (game 1.0.16)
+
+Bundle `c4210710`. Every item whose primary attack has `m_requiresReload` set:
+
+| Item | `m_reloadTime` | `m_blockReloadTime` | Reload drain | Skill |
+|---|---|---|---|---|
+| GrapplingHook | 2 s | 1.1 s | none | none |
+| Crossbows (Arbalest, Ripper and Gold families, 8 items) | 3.5 s | 0 | 1 stamina per s | Crossbows |
+| StaffLightning | 1.9 s | 0 | 25 eitr per s | Elemental magic |
+
+`ItemData.GetWeaponLoadingTime` halves the reload time at skill 100. The grappling hook has
+no skill, so its reload is always 2 s. No secondary attack requires a reload.
+
+GrapplingHook item: 10 pierce, `m_attackForce` 20, 15 stamina per shot for either attack,
+projectile speed 40, animation `crossbow_fire`, reload animation `reload_crossbow`,
+durability 300, one quality level.
+
+| Field | GrapplingPoint (primary) | GrapplingPointSecondary |
+|---|---|---|
+| Spawned by | Projectile_GrapplingHook | Projectile_GrapplingHook_secondary |
+| `Method` | ConstantVelocity | ConstantVelocity |
+| `m_pullForce` | 20 | 15 |
+| `m_maxLength` | 60 m | 70 m |
+| `m_jumpOnDone` | 10 | 0 |
+| `m_ttlSE` | 2 s | 3 s |
+| `m_FOVTarget` | 110 | none |
+| `m_repellingInForce` | 5 | 40 |
+| `m_closeBreakDist` / `m_breakEarlyTime` | 1 m / 0.5 s | same |
+
+Both projectiles live 1 s, so the reach of a shot is about 40 m.
+
+A reload cannot be queued while `Player.m_blockReload` is above zero (set to
+`m_blockReloadTime` on each shot) or while `Player.m_grappling` is, which a live grappling
+point resets to 0.2 every frame. `GrapplingHookNoReload` skips the reload altogether.

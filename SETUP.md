@@ -38,8 +38,8 @@
    directly (Steam's play button works too now that BepInEx is installed) and confirm:
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
-   - The log shows `Craigins Valheim Mod v0.6.9 loaded` and Jotunn initializing (plus
-     `Craigins Valheim Instances v0.6.9 loaded` / `Craigins Valheim Stargate v0.6.9 loaded` if
+   - The log shows `Craigins Valheim Mod v0.7.0 loaded` and Jotunn initializing (plus
+     `Craigins Valheim Instances v0.7.0 loaded` / `Craigins Valheim Stargate v0.7.0 loaded` if
      those plugin DLLs are installed too).
    - In the Mistlands: terrain reads as smoother than vanilla, and ground mist is gone. I
      verified the patches compile and target the right methods/fields, but I have no way to
@@ -63,7 +63,8 @@
 4. **Test stargates.** Copy `CraiginsValheimStargate.dll` to the server and every client, build
    two or three gates (hammer menu, "Stargate"), and check: a dialed link still holds after 10+
    seconds; a third gate dialing in drops the old link on both old ends; a link survives a
-   server restart; dialing a gate nobody is near works. The README's **Stargates** section has
+   server restart; dialing a gate nobody is near works; Shift+E on a coloured sign reading
+   `Name ABC-DEF` within 10 m of a gate dials it. The README's **Stargates** section has
    the controls.
 
 5. **Thunderstore/Nexus publishing**, whenever you're ready to share the mod more widely.

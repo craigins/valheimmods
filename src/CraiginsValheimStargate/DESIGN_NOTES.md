@@ -97,6 +97,14 @@ per pair of gates. An ambiguous address is refused, not guessed.
 hover split as `Tameable`. Both actions need ward access, the same as vanilla tag changes. Being
 dialed does not.
 
+**Signs dial too.** Shift+E on a sign reading `Name ABC-DEF` sends the same `CVM_StargateDial`
+for the nearest gate within `SignDialRange` (10 m) of the sign, so the server side is unchanged.
+The sign's raw ZDO text is used, every `<...>` tag is stripped, and the text is split at the
+first space; the second part is the address. The gate is found among `ZNetScene.m_instances`,
+i.e. gates this client has actually instantiated. A sign without an address falls through to
+vanilla, so Shift+E still edits an ordinary sign. It needs ward access at the gate, not at the
+sign.
+
 ## Files
 
 - `StargatePlugin.cs`: entry point and config.
@@ -105,6 +113,7 @@ dialed does not.
 - `StargateNetwork.cs`: RPCs and the server-side dial/close/list logic.
 - `StargatePatches.cs`: hover text, interaction and the dial prompt.
 - `StargateCommand.cs`: `stargate list`, a cheat that asks the server.
+- `StargateSignPatches.cs`: Shift+E on a sign dials the address written on it.
 
 ## Limits and known gaps
 
