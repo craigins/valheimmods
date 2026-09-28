@@ -228,7 +228,7 @@ namespace CraiginsValheimMod.Dungeons
                 return false;
             }
 
-            Vector3 originalPosition = OriginalPosition(ZoneSystem.GetZone(generator.GetPosition()));
+            Vector3 originalPosition = DungeonReset.OriginalPosition(generator.GetPosition(), generator);
             var created = new List<ZDO>();
             var discarded = new HashSet<ZDO>();
             GameObject go = null;
@@ -236,7 +236,8 @@ namespace CraiginsValheimMod.Dungeons
             GenerationTracker.Recorder = created;
             GenerationTracker.OnDiscard = attempt => discarded.UnionWith(attempt);
             ZNetView.StartGhostInit();
-            _replaying = true;
+            DestroyGhostsImmediately = true;
+            Replaying = true;
             try
             {
                 go = Object.Instantiate(prefab, generator.GetPosition(), generator.GetRotation());
@@ -270,7 +271,8 @@ namespace CraiginsValheimMod.Dungeons
             }
             finally
             {
-                _replaying = false;
+                DestroyGhostsImmediately = false;
+                Replaying = false;
                 ZNetView.FinishGhostInit();
                 GenerationTracker.Recorder = null;
                 GenerationTracker.OnDiscard = null;
@@ -298,7 +300,11 @@ namespace CraiginsValheimMod.Dungeons
             return true;
         }
 
-        private static bool _replaying;
+        /// <summary>Set while a replay here, or a Ghost rebuild in DungeonReset, is generating.</summary>
+        internal static bool DestroyGhostsImmediately;
+
+        /// <summary>Set while a replay here is generating, so it follows the rules the dungeon was generated under.</summary>
+        internal static bool Replaying;
 
         /// <summary>
         /// Ghost-mode generation throws each object away with Object.Destroy, which Unity only
@@ -306,11 +312,12 @@ namespace CraiginsValheimMod.Dungeons
         /// runs in the same frame - a Mörkhalla alone is nine attempts of about 7,000 objects, torches
         /// with looping audio among them - and the first version hung the game with a quarter of a
         /// million of them alive at once ("Ran out of virtual channels"). During a replay they go
-        /// immediately instead; both call sites are the last use of the object.
+        /// immediately instead; both call sites are the last use of the object. DungeonReset's
+        /// Ghost rebuilds use it too.
         /// </summary>
         public static void GhostDestroy(Object obj)
         {
-            if (_replaying)
+            if (DestroyGhostsImmediately)
             {
                 Object.DestroyImmediate(obj);
             }
@@ -349,32 +356,6 @@ namespace CraiginsValheimMod.Dungeons
                 {
                     Jotunn.Logger.LogWarning($"DungeonGenerator.{original.Name} has {hits} Object.Destroy calls, expected 1.");
                 }
-            }
-        }
-
-        /// <summary>What ZoneSystem.SpawnLocation gives a custom-interior generator as m_originalPosition.</summary>
-        private static Vector3 OriginalPosition(Vector2s zone)
-        {
-            if (!ZoneSystem.instance.m_locationInstances.TryGetValue(zone, out ZoneSystem.LocationInstance instance)
-                || instance.m_location == null || instance.m_location.m_prefab == null)
-            {
-                return Vector3.zero;
-            }
-
-            instance.m_location.m_prefab.Load();
-            try
-            {
-                GameObject asset = instance.m_location.m_prefab.Asset;
-                Location location = asset != null ? asset.GetComponent<Location>() : null;
-                if (location != null && location.m_useCustomInteriorTransform && location.m_interiorTransform != null && location.m_generator != null)
-                {
-                    return location.m_generator.transform.localPosition;
-                }
-                return Vector3.zero;
-            }
-            finally
-            {
-                instance.m_location.m_prefab.Release();
             }
         }
 

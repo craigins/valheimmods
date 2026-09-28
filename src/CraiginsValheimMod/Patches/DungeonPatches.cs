@@ -62,6 +62,19 @@ namespace CraiginsValheimMod.Patches
     internal static class DungeonPatches
     {
         /// <summary>
+        /// Dungeons MinDungeonRooms leaves alone. Mörkhalla is a tower built to a fixed plan -
+        /// an entrance, four floors and an end cap - and forcing it towards 20 rooms (it tops out
+        /// at 17 or 18) only produced strange layouts, with all 8 rerolls run every time.
+        ///
+        /// Not while DungeonRerollCleanup replays an existing dungeon: that has to follow the
+        /// rules the dungeon was generated under, which included Mörkhalla.
+        /// </summary>
+        internal static bool IsExempt(DungeonGenerator dungeon)
+        {
+            return !DungeonRerollCleanup.Replaying && (dungeon.m_themes & Room.Theme.MorkHalla) != 0;
+        }
+
+        /// <summary>
         /// Raise the per-prefab floor so generation doesn't stop early. m_maxRooms comes up with
         /// it because it's the loop's iteration count, not a cap on rooms - leaving it below the
         /// requested minimum would make that minimum unreachable no matter how many rerolls run.
@@ -72,7 +85,7 @@ namespace CraiginsValheimMod.Patches
             private static void Prefix(DungeonGenerator __instance)
             {
                 int min = Plugin.MinDungeonRooms.Value;
-                if (min <= 0 || __instance.m_algorithm != DungeonGenerator.Algorithm.Dungeon)
+                if (min <= 0 || __instance.m_algorithm != DungeonGenerator.Algorithm.Dungeon || IsExempt(__instance))
                 {
                     return;
                 }
@@ -129,7 +142,8 @@ namespace CraiginsValheimMod.Patches
 
             private static void Prefix(DungeonGenerator __instance)
             {
-                if (_rerolling || Plugin.MinDungeonRooms.Value <= 0 || __instance.m_algorithm != DungeonGenerator.Algorithm.Dungeon)
+                if (_rerolling || Plugin.MinDungeonRooms.Value <= 0 || __instance.m_algorithm != DungeonGenerator.Algorithm.Dungeon
+                    || IsExempt(__instance))
                 {
                     return;
                 }

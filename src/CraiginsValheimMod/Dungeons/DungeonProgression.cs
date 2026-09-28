@@ -71,7 +71,7 @@ namespace CraiginsValheimMod.Dungeons
                 requirement = null;
                 return true;
             }
-            return IsUnlocked(dungeon.transform.position, out requirement);
+            return IsUnlocked(DungeonReset.EntrancePosition(dungeon), out requirement);
         }
 
         /// <summary>

@@ -104,6 +104,7 @@ namespace CraiginsValheimMod.Dungeons
         public static Handle Acquire(Vector2s zone, out string error)
         {
             error = null;
+            zone = InteriorZone(zone);
 
             DungeonGenerator live = FindLoadedInZone(zone);
             if (live != null)
@@ -131,6 +132,80 @@ namespace CraiginsValheimMod.Dungeons
             }
 
             return new Handle { Dungeon = dungeon, Transient = true };
+        }
+
+        /// <summary>
+        /// Where the dungeon behind this zone's entrance actually is. Normally the same zone -
+        /// interiors sit straight above their entrance - but the off-map dungeons plugin moves
+        /// some (Mörkhalla) into zones of their own and records the new zone's centre on the
+        /// entrance's LocationProxy. Read by key name so this plugin doesn't depend on that one.
+        /// </summary>
+        public static Vector2s InteriorZone(Vector2s entranceZone)
+        {
+            var sector = new List<ZDO>();
+            ZDOMan.instance.FindSectorObjects(entranceZone, new SimulationDistance(0, 0), sector);
+            foreach (ZDO zdo in sector)
+            {
+                if (zdo != null && zdo.GetVec3(OffMapInteriorZoneKey, out Vector3 zonePos))
+                {
+                    return ZoneSystem.GetZone(zonePos);
+                }
+            }
+            return entranceZone;
+        }
+
+        private static readonly int OffMapInteriorZoneKey = "cvm_offmap_interior_zone".GetStableHashCode();
+        private static readonly int OffMapExteriorPosKey = "cvm_offmap_exterior_pos".GetStableHashCode();
+        private static readonly int OffMapLocationKey = "cvm_offmap_location".GetStableHashCode();
+
+        /// <summary>
+        /// Where the dungeon's entrance is: straight below it, or wherever the off-map plugin
+        /// recorded it for a moved interior. Used for the boss gate and the location's name.
+        /// </summary>
+        public static Vector3 EntrancePosition(DungeonGenerator dungeon)
+        {
+            ZDO zdo = DungeonInterior.GetZdo(dungeon);
+            return zdo != null && zdo.GetVec3(OffMapExteriorPosKey, out Vector3 pos) ? pos : dungeon.transform.position;
+        }
+
+        /// <summary>
+        /// What ZoneSystem.SpawnLocation gives a custom-interior generator as m_originalPosition:
+        /// its local position in the location prefab. Custom-interior dungeons (frost caves,
+        /// Mistlands, Hildir's, Mörkhalla) place their bounds with it, and a generator built from
+        /// a ZDO never has it set. The location comes from the zone, or for a moved interior from
+        /// the location hash the off-map plugin stored on the generator.
+        /// </summary>
+        public static Vector3 OriginalPosition(Vector3 generatorPosition, ZDO generator)
+        {
+            ZoneSystem.ZoneLocation location = null;
+            if (ZoneSystem.instance.m_locationInstances.TryGetValue(ZoneSystem.GetZone(generatorPosition), out ZoneSystem.LocationInstance instance))
+            {
+                location = instance.m_location;
+            }
+            else if (generator != null && generator.GetInt(OffMapLocationKey, out int hash))
+            {
+                location = ZoneSystem.instance.GetLocation(hash);
+            }
+            if (location == null || location.m_prefab == null)
+            {
+                return Vector3.zero;
+            }
+
+            location.m_prefab.Load();
+            try
+            {
+                GameObject asset = location.m_prefab.Asset;
+                Location template = asset != null ? asset.GetComponent<Location>() : null;
+                if (template != null && template.m_useCustomInteriorTransform && template.m_interiorTransform != null && template.m_generator != null)
+                {
+                    return template.m_generator.transform.localPosition;
+                }
+                return Vector3.zero;
+            }
+            finally
+            {
+                location.m_prefab.Release();
+            }
         }
 
         /// <summary>
@@ -187,7 +262,7 @@ namespace CraiginsValheimMod.Dungeons
         public static string LocationName(DungeonGenerator dungeon)
         {
             if (ZoneSystem.instance != null
-                && ZoneSystem.instance.m_locationInstances.TryGetValue(DungeonInterior.ZoneOf(dungeon), out ZoneSystem.LocationInstance instance)
+                && ZoneSystem.instance.m_locationInstances.TryGetValue(ZoneSystem.GetZone(EntrancePosition(dungeon)), out ZoneSystem.LocationInstance instance)
                 && instance.m_location != null)
             {
                 return LocationName(instance.m_location);
@@ -308,10 +383,14 @@ namespace CraiginsValheimMod.Dungeons
         /// on a transient would leave hundreds of instantiated objects sitting outside the
         /// server's active area until ZNetScene's next pass swept them.
         ///
-        /// Known limit, in both modes: a generator created from a ZDO has m_originalPosition at
-        /// its default (it's only set by SpawnLocation, on first generation), and
-        /// m_useCustomInteriorTransform dungeons - frost caves, Mistlands, Hildir's - use it to
-        /// place their bounds. Crypts don't.
+        /// A generator created from a ZDO has m_originalPosition at its default (only
+        /// SpawnLocation sets it), and m_useCustomInteriorTransform dungeons - frost caves,
+        /// Mistlands, Hildir's, Mörkhalla - place their bounds with it, so it's restored from the
+        /// location prefab first. Crypts don't use it.
+        ///
+        /// A Ghost rebuild of a big dungeon creates tens of thousands of objects in one frame
+        /// (Mörkhalla: nine layouts of about 7,000), so each is destroyed immediately rather than
+        /// at the end of the frame - see DungeonRerollCleanup.GhostDestroy.
         /// </summary>
         public static Result Execute(Handle handle, int seed, bool preservePlayerBuilt)
         {
@@ -340,16 +419,19 @@ namespace CraiginsValheimMod.Dungeons
             // the seed afresh. A transient is fresh already; a live one may not be.
             dungeon.m_hasGeneratedSeed = false;
             DungeonGenerator.m_forceSeed = int.MinValue;
+            dungeon.m_originalPosition = OriginalPosition(dungeon.transform.position, zdo);
 
             if (handle.Transient)
             {
                 ZNetView.StartGhostInit();
+                DungeonRerollCleanup.DestroyGhostsImmediately = true;
                 try
                 {
                     dungeon.Generate(seed, ZoneSystem.SpawnMode.Ghost);
                 }
                 finally
                 {
+                    DungeonRerollCleanup.DestroyGhostsImmediately = false;
                     ZNetView.FinishGhostInit();
                 }
             }
