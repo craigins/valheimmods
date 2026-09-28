@@ -17,7 +17,7 @@ env:
   BEPINEX_VERSION: '5.4.2351'
   # Every DLL that ships in a release, ';'-separated. All plugins are versioned and released
   # together, so the version check and the upload both walk this one list.
-  RELEASE_DLLS: 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll;src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll;src/CraiginsValheimStargate/bin/Release/CraiginsValheimStargate.dll'
+  RELEASE_DLLS: 'src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll;src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll;src/CraiginsValheimStargate/bin/Release/CraiginsValheimStargate.dll;src/CraiginsValheimOffMapDungeons/bin/Release/CraiginsValheimOffMapDungeons.dll'
 
 jobs:
   build:
@@ -80,8 +80,8 @@ jobs:
           }
           "BEPINEX_CORE=$core" >> $env:GITHUB_ENV
 
-      # The solution, so every plugin DLL is built - the base mod, the instances plugin and the
-      # stargate plugin, which are versioned and released together.
+      # The solution, so every plugin DLL is built - the base mod, the instances plugin, the
+      # stargate plugin and the off-map dungeons plugin, which are versioned and released together.
       - name: Build
         shell: pwsh
         run: |
@@ -99,7 +99,7 @@ jobs:
             $built = [Reflection.AssemblyName]::GetAssemblyName((Resolve-Path $dll)).Version
             $short = "$($built.Major).$($built.Minor).$($built.Build)"
             if ($short -ne $tag) {
-              throw "Tag $tag does not match $dll at version $short - bump Plugin.ModVersion, InstancesPlugin.ModVersion, StargatePlugin.ModVersion and every csproj <Version> element before tagging."
+              throw "Tag $tag does not match $dll at version $short - bump Plugin.ModVersion, InstancesPlugin.ModVersion, StargatePlugin.ModVersion, OffMapPlugin.ModVersion and every csproj <Version> element before tagging."
             }
             Write-Host "Tag $tag matches $dll"
           }
@@ -111,6 +111,7 @@ jobs:
             src/CraiginsValheimMod/bin/Release/CraiginsValheimMod.dll
             src/CraiginsValheimInstances/bin/Release/CraiginsValheimInstances.dll
             src/CraiginsValheimStargate/bin/Release/CraiginsValheimStargate.dll
+            src/CraiginsValheimOffMapDungeons/bin/Release/CraiginsValheimOffMapDungeons.dll
 
       # Attaches to an existing release if there is one (so hand-written notes are never
       # overwritten), otherwise opens a draft for the notes to be written into. Nothing is

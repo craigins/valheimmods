@@ -4,10 +4,11 @@ BepInEx + Jotunn mod project for Valheim.
 
 ## Layout
 
-Three plugins, built from one repo and released together: `CraiginsValheimMod.dll` (everything
-below), `CraiginsValheimInstances.dll` (instanced dungeons only) and `CraiginsValheimStargate.dll`
-(addressable portals only). The instances plugin depends on the base mod; the stargate plugin
-depends on nothing but Jotunn; the base mod knows about neither, so it runs fine alone.
+Four plugins, built from one repo and released together: `CraiginsValheimMod.dll` (everything
+below), `CraiginsValheimInstances.dll` (instanced dungeons only), `CraiginsValheimStargate.dll`
+(addressable portals only) and `CraiginsValheimOffMapDungeons.dll` (moves Mörkhalla interiors off
+the map). The instances plugin depends on the base mod; the other two depend on nothing but
+Jotunn; the base mod knows about none of them, so it runs fine alone.
 
 - `src/CraiginsValheimMod/` - the mod itself.
   - `Plugin.cs` - BepInEx plugin entry point. Binds all config toggles and runs
@@ -192,6 +193,12 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
   gates out of vanilla pairing, `StargateAddress.cs` the addressing, `StargateNetwork.cs` the
   server-side dialing, `StargatePatches.cs` the hover text and interaction,
   `StargateSignPatches.cs` dialing from a sign.
+- `src/CraiginsValheimOffMapDungeons/` - a **fourth plugin DLL**: moves Mörkhalla interiors into
+  their own zones past the edge of the world. See **Off-map dungeons** below.
+  `OffMapPlugin.cs` is its entry point, `OffMapRegion.cs` the zones and slot allocation,
+  `OffMapSpawnPatches.cs` the spawn hook, `InteriorShell.cs` the exit and stand-in location
+  rebuilt beside a moved interior, `OffMapTeleportPatches.cs` the doors, and
+  `OffMapMigration.cs` the one-time move of dungeons that already exist.
 - `docs/GAME_CONSTANTS.md` - world extent, player movement, equipment modifiers and boat
   physics values extracted from the game (2026-02-19 build), plus how to re-extract them.
   Prefab-serialized tuning values are **not** in the DLL, so a decompiler alone gives wrong
@@ -215,10 +222,10 @@ This does three things automatically, using the path from `LocalPaths.props`:
    in `assembly_valheim.dll` - `Assembly-CSharp.dll` itself is nearly empty (~23KB). Patch
    targets are almost always in `assembly_valheim`.
 3. Copies each built DLL + PDB into `<Valheim>/BepInEx/plugins/<plugin name>/` so it's ready
-   to test on next launch - `CraiginsValheimMod/`, `CraiginsValheimInstances/` and
-   `CraiginsValheimStargate/`.
+   to test on next launch - `CraiginsValheimMod/`, `CraiginsValheimInstances/`,
+   `CraiginsValheimStargate/` and `CraiginsValheimOffMapDungeons/`.
 
-`dotnet build` at the repo root builds all three projects (they're all in `CraiginsValheimMod.slnx`).
+`dotnet build` at the repo root builds all four projects (they're all in `CraiginsValheimMod.slnx`).
 
 **Jotunn has to be installed into the game separately.** The `JotunnLib` NuGet reference is
 compile-time only - it does not put `Jotunn.dll` anywhere BepInEx will find it. Miss this step
@@ -239,15 +246,17 @@ will fail at a missing method rather than at load.
 
 Build one on its own by naming its csproj. Installing is the same idea: copy
 `CraiginsValheimMod.dll` into `BepInEx/plugins/`, and add `CraiginsValheimInstances.dll` next to
-it only if you want instanced dungeons, `CraiginsValheimStargate.dll` only if you want stargates.
+it only if you want instanced dungeons, `CraiginsValheimStargate.dll` only if you want stargates,
+`CraiginsValheimOffMapDungeons.dll` only if you want Mörkhalla moved off the map.
 The instances plugin declares a BepInEx dependency on the base mod, so it refuses to load without
-it rather than half-working. The stargate plugin needs only Jotunn.
+it rather than half-working. The stargate and off-map plugins need only Jotunn.
 
 ## Releasing
 
-All three plugins are versioned and released together, so bump the version in seven places -
-`Plugin.ModVersion`, `InstancesPlugin.ModVersion`, `StargatePlugin.ModVersion`, all three csproj
-`<Version>`s, and the log line quoted in `SETUP.md` - then tag and push:
+All four plugins are versioned and released together, so bump the version in nine places -
+`Plugin.ModVersion`, `InstancesPlugin.ModVersion`, `StargatePlugin.ModVersion`,
+`OffMapPlugin.ModVersion`, all four csproj `<Version>`s, and the log line quoted in `SETUP.md` -
+then tag and push:
 
 ```
 git tag -a v0.5.0 -m "..."
@@ -255,8 +264,8 @@ git push origin main --follow-tags
 ```
 
 `.github/workflows/release.yml` builds Release on a runner and attaches
-`CraiginsValheimMod.dll`, `CraiginsValheimInstances.dll` and `CraiginsValheimStargate.dll` to the
-release. If a release for that
+`CraiginsValheimMod.dll`, `CraiginsValheimInstances.dll`, `CraiginsValheimStargate.dll` and
+`CraiginsValheimOffMapDungeons.dll` to the release. If a release for that
 tag already exists it just replaces the DLLs, so hand-written notes are never overwritten; if
 not, it opens a **draft** to write notes into. Nothing is ever published automatically. A tag
 whose version doesn't match either built assembly fails the build rather than shipping a
@@ -570,6 +579,29 @@ real dialer, event-horizon visuals, an iris, instanced-dungeon addresses).
 
 **Deconstruct gates before removing the plugin.** Their ZDOs sit in the world's portal list, and
 without the plugin vanilla would try to pair them with untagged portals.
+
+## Off-map dungeons
+
+Mörkhalla (the Deep North dungeon behind the Gates of Mörkhalla) is by far the heaviest thing in
+the game: around 50,000 objects, 7,000 of them networked, and 1,400 particle systems. Vanilla puts
+the interior 5000 m straight above the gates, in the same zone, so all of it loads whenever anyone
+is near the gates, and it is torn down in a single frame when they leave. **Untested in-game.**
+
+`CraiginsValheimOffMapDungeons.dll` moves each Mörkhalla interior into a zone of its own past the
+north-west edge of the world. The gates still work as doors, with a loading screen each way, like
+a portal. Near the gates, nothing of the interior is loaded. Leaving still unloads the whole tower
+at once, but that now happens behind the exit's loading screen. The cost while you are inside is
+unchanged.
+
+- **Every player needs the DLL, and the server does too.** Jotunn refuses a connection from a
+  player without it, with a message saying so. Without it, the gates would lead into empty air.
+- **One setting, `Enabled`, default on, read by the server.** Clients follow whatever the server
+  did, so a client's own value doesn't matter.
+- **Existing Mörkhallas are moved when the server starts**, once, including everything inside
+  them. New ones are placed off-map as their zones generate.
+- **Don't remove the DLL from a world that has moved dungeons.** Their gates would lead nowhere.
+  Turning `Enabled` off is safe: moved dungeons keep working, and new ones stay vanilla.
+- The map shows you off the edge of the world while you are inside.
 
 ## World pregeneration
 

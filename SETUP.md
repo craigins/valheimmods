@@ -20,6 +20,9 @@
   portals you dial by address, with links that hold until disconnected or displaced by an
   incoming dial. Design verified against 1.0.7 in that folder's `DESIGN_NOTES.md`. Not yet
   tested in-game.
+- Off-map dungeons, as a fourth plugin DLL (`src/CraiginsValheimOffMapDungeons/`): Mörkhalla
+  interiors moved into their own zones past the world's edge, so they only load while someone is
+  inside. Existing ones are moved at server start. Built against 1.0.16. Not yet tested in-game.
 - `pregenerateworld` console command (`WorldGen/`) - force-generates the whole map instead of
   lazy per-zone generation, for porting a fully-generated world (with the Mistlands terrain
   patch already baked in) to your dedicated server. Generates centre-outward so once-per-world
@@ -38,9 +41,9 @@
    directly (Steam's play button works too now that BepInEx is installed) and confirm:
    - A console window appears (BepInEx logging) if you use `-console`, or check
      `BepInEx\LogOutput.log` afterwards.
-   - The log shows `Craigins Valheim Mod v0.7.1 loaded` and Jotunn initializing (plus
-     `Craigins Valheim Instances v0.7.1 loaded` / `Craigins Valheim Stargate v0.7.1 loaded` if
-     those plugin DLLs are installed too).
+   - The log shows `Craigins Valheim Mod v0.7.2 loaded` and Jotunn initializing (plus
+     `Craigins Valheim Instances v0.7.2 loaded` / `Craigins Valheim Stargate v0.7.2 loaded` /
+     `Craigins Valheim Off-Map Dungeons v0.7.2 loaded` if those plugin DLLs are installed too).
    - In the Mistlands: terrain reads as smoother than vanilla, and ground mist is gone. I
      verified the patches compile and target the right methods/fields, but I have no way to
      confirm the in-game *effect* still looks right after however many game updates since you

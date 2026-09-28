@@ -2,17 +2,17 @@
 
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
-    <AssemblyName>CraiginsValheimInstances</AssemblyName>
-    <RootNamespace>CraiginsValheimMod.Instances</RootNamespace>
+    <AssemblyName>CraiginsValheimOffMapDungeons</AssemblyName>
+    <RootNamespace>CraiginsValheimMod.OffMap</RootNamespace>
     <Version>0.7.2</Version>
-    <Product>Craigins Valheim Instances</Product>
+    <Product>Craigins Valheim Off-Map Dungeons</Product>
     <Authors>craigins</Authors>
 
     <!-- Same overrides as the base mod, for the same reason: CI builds against a dedicated
          server download rather than a game install. See CraiginsValheimMod.csproj. -->
     <ValheimManagedDir Condition="'$(ValheimManagedDir)' == ''">$(ValheimInstallDir)\valheim_Data\Managed</ValheimManagedDir>
     <ValheimBepInExCoreDir Condition="'$(ValheimBepInExCoreDir)' == ''">$(ValheimInstallDir)\BepInEx\core</ValheimBepInExCoreDir>
-    <ValheimPluginsDir>$(ValheimInstallDir)\BepInEx\plugins\CraiginsValheimInstances</ValheimPluginsDir>
+    <ValheimPluginsDir>$(ValheimInstallDir)\BepInEx\plugins\CraiginsValheimOffMapDungeons</ValheimPluginsDir>
 
     <NoWarn>$(NoWarn);MSB3245</NoWarn>
   </PropertyGroup>
@@ -23,15 +23,8 @@
     <PackageReference Include="JotunnLib" Version="2.30.2" />
   </ItemGroup>
 
-  <!-- The base mod is a hard dependency, not a convenience: this plugin builds on its dungeon
-       primitives (DungeonInterior, DungeonReset) and BepInDependency makes BepInEx load it
-       first. Private=false so the base DLL isn't copied next to this one - BepInEx already has
-       it loaded, and a second copy on disk is a second thing to keep in step. -->
-  <ItemGroup>
-    <ProjectReference Include="..\CraiginsValheimMod\CraiginsValheimMod.csproj">
-      <Private>false</Private>
-    </ProjectReference>
-  </ItemGroup>
+  <!-- No reference to the base mod: relocation is built entirely on vanilla location and
+       dungeon machinery and needs nothing from it, so this DLL runs on its own. -->
 
   <Target Name="EnsureValheimInstall" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(ValheimManagedDir)')">
     <Error Text="Could not find a Valheim install at '$(ValheimInstallDir)'. Copy LocalPaths.props.example (repo root) to LocalPaths.props and set ValheimInstallDir to your game folder." />
