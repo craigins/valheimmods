@@ -433,7 +433,35 @@ durability 300, one quality level.
 | `m_repellingInForce` | 5 | 40 |
 | `m_closeBreakDist` / `m_breakEarlyTime` | 1 m / 0.5 s | same |
 
-Both projectiles live 1 s, so the reach of a shot is about 40 m.
+| Field | Projectile_GrapplingHook (primary) | Projectile_GrapplingHook_secondary |
+|---|---|---|
+| `m_ttl` | 1 s | 1 s |
+| `m_gravity` | 10 | 5 |
+| `m_drag` | 0 | 0 |
+| `m_spawnOnTtl` | off | off |
+| `m_stayTTL` / `m_stayAfterHitStatic` | 1 s / off | same |
+| `m_rayRadius` | 0 | 0 |
+| `m_doOwnerRaytest` | on | on |
+| `m_hitNoise` | 40 | 40 |
+
+Both attacks fire at `m_projectileVel` 40 with `m_launchAngle` 0 and `m_projectileAccuracy` 0,
+from 1.5 m up, 1 m forward and 0.2 m to the right of the player. `Player` does not override
+`GetAimDir`, so the hook leaves along the look direction exactly.
+
+Both projectiles live 1 s, so the reach of a shot is about 40 m, and gravity pulls the hook
+about 5 m below the look direction in that time (2.5 m for the secondary). A hook whose
+lifetime runs out is destroyed without attaching. `GrapplingHookNoGravity` zeroes `m_gravity`
+on the fired hook. `GrapplingHookNoRangeLimit` raises `m_ttl` to 60 s and sets the point's
+`m_maxLength` to infinity.
+
+With those limits gone the reach is bounded by what is loaded. Terrain and objects exist only
+for the zones around the player: `ZoneSystem.CreateLocalZones` and `ZDOMan.FindSectorObjects`
+both use `SimulationDistance.NearSimulationDistance`, which is 2 zones of 64 m at the original
+setting. That is 128 to 192 m along an axis, depending on where in their zone the player
+stands. `ZNetScene.RemoveObjects` destroys any object whose zone has left that set, and its ZDO
+too when it is not persistent, which the hook and the point are not. The check is by zone, so
+height never triggers it. Ownership is only handed over for persistent ZDOs
+(`ZDOMan.ReleaseNearbyZDOS`), so the hook stays with whoever fired it.
 
 A reload cannot be queued while `Player.m_blockReload` is above zero (set to
 `m_blockReloadTime` on each shot) or while `Player.m_grappling` is, which a live grappling

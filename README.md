@@ -114,7 +114,8 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       off, so in vanilla it flies through a tamed animal unless the thrower has PvP on, and
       this accepts tamed animals as targets either way. Both run on the thrower's machine, so
       only the thrower needs the mod. Wild creatures and players are hit as normal.
-    - `GrapplingHookPatches.cs` - `GrapplingHookNoReload`. Not a port - new. The grappling
+    - `GrapplingHookPatches.cs` - `GrapplingHookNoReload`, `GrapplingHookNoGravity` and
+      `GrapplingHookNoRangeLimit`. Not a port - new. The grappling
       hook's primary attack has `m_requiresReload` set, like a crossbow: firing unloads it, and
       `Player.UpdateWeaponLoading` queues a 2 second reload that cannot even start until the
       pull has ended (`m_grappling`) and 1.1 seconds have passed since the shot
@@ -123,6 +124,21 @@ depends on nothing but Jotunn; the base mod knows about neither, so it runs fine
       cost and the attack animation are untouched. The hook is recognised by its projectile
       leaving a `GrapplingPoint` behind, so crossbows and the lightning staff keep their reload.
       Client-side only - no server support needed.
+
+      `GrapplingHookNoGravity` makes the hook fly dead straight. The hook is an ordinary
+      `Projectile` with `m_gravity` 10 (5 for the secondary shot) and nothing to compensate for
+      it, so in vanilla it sags about 5 m below the look direction over its flight. A postfix on
+      `Projectile.Setup` zeroes `m_gravity` on the local player's own hook; the prefab is not
+      touched.
+
+      `GrapplingHookNoRangeLimit` removes the two things that cap the reach: the hook's 1 second
+      lifetime (`m_ttl`, about 40 m at speed 40), raised by the same postfix, and the line's
+      `m_maxLength` (60 m, 70 m for the secondary), set to infinity on each point by a prefix on
+      `GrapplingPoint.Activate`. What is left is the edge of the loaded world: the hook can only
+      catch on terrain and objects that exist on the client, which at the original simulation
+      distance means 128 to 192 m out. The hook's speed and the pull speed are unchanged. A hook
+      that hits nothing is removed after 60 seconds rather than never, so that one fired at the
+      sky does not fly for ever. Both are client-side only.
     - `VinePatches.cs` - `VineberryIgnoresAdjacency` and `IvyIgnoresAdjacency`. Not a port -
       new. Every segment of a vine grows berries. Vanilla's `Vine.CheckBerryBlocker` lets a
       segment fruit only if fewer than `m_maxBerriesWithinBlocker` other segments in a box around

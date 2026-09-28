@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.0";
+        public const string ModVersion = "0.7.1";
 
         public static Plugin Instance { get; private set; }
 
@@ -39,6 +39,8 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> HarpoonNoDamageToTamed;
         public static ConfigEntry<bool> HarpoonHitsTamedWithoutPvP;
         public static ConfigEntry<bool> GrapplingHookNoReload;
+        public static ConfigEntry<bool> GrapplingHookNoGravity;
+        public static ConfigEntry<bool> GrapplingHookNoRangeLimit;
         public static ConfigEntry<bool> BlastFurnaceSmeltsAll;
         public static ConfigEntry<bool> VineberryIgnoresAdjacency;
         public static ConfigEntry<bool> IvyIgnoresAdjacency;
@@ -172,6 +174,22 @@ namespace CraiginsValheimMod
                 "Each shot still costs its stamina. The hook is always drawn loaded in the " +
                 "launcher. Crossbows and the lightning staff still reload. Affects only your own " +
                 "character; the server does not need it.");
+            GrapplingHookNoGravity = Config.Bind(
+                "QualityOfLife", "GrapplingHookNoGravity", true,
+                "The grappling hook flies in a dead straight line along where you are looking, " +
+                "instead of dropping as it goes. In vanilla it sags about 5 metres over its " +
+                "flight (half that for the secondary shot). Applies to both of the hook's shots. " +
+                "Affects only your own shots; the server does not need it.");
+            GrapplingHookNoRangeLimit = Config.Bind(
+                "QualityOfLife", "GrapplingHookNoRangeLimit", true,
+                "The grappling hook keeps flying until it hits something, and the line never " +
+                "snaps for being too long. In vanilla the hook vanishes after 1 second of flight, " +
+                "about 40 metres, and the line breaks beyond 60 metres (70 for the secondary " +
+                "shot). The hook can still only catch on what the game has loaded around you, " +
+                "which is roughly 130 to 190 metres out at the original simulation distance. It " +
+                "flies at its usual speed, so a long shot takes a few seconds to land. A hook " +
+                "that hits nothing is removed after 60 seconds. Affects only your own shots; the " +
+                "server does not need it.");
             BlastFurnaceSmeltsAll = Config.Bind(
                 "QualityOfLife", "BlastFurnaceSmeltsAll", true,
                 "Lets the blast furnace smelt everything the regular smelter does (copper, tin, iron, " +
