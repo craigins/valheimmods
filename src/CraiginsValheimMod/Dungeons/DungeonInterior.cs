@@ -70,9 +70,15 @@ namespace CraiginsValheimMod.Dungeons
         /// <summary>Is this world position inside this particular dungeon's interior?</summary>
         public static bool IsInside(DungeonGenerator dungeon, Vector3 point)
         {
+            return IsInside(dungeon.transform.position, point);
+        }
+
+        /// <summary>The same test for a generator known only by its ZDO's position.</summary>
+        public static bool IsInside(Vector3 generatorPosition, Vector3 point)
+        {
             return point.y > InteriorFloor
-                && Mathf.Abs(point.y - dungeon.transform.position.y) <= InteriorBandHalfHeight
-                && ZoneSystem.GetZone(point) == ZoneOf(dungeon);
+                && Mathf.Abs(point.y - generatorPosition.y) <= InteriorBandHalfHeight
+                && ZoneSystem.GetZone(point) == ZoneSystem.GetZone(generatorPosition);
         }
 
         /// <summary>

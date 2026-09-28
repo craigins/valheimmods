@@ -33,7 +33,7 @@ namespace CraiginsValheimMod.OffMap
     {
         public const string ModGuid = "com.craigins.valheimoffmapdungeons";
         public const string ModName = "Craigins Valheim Off-Map Dungeons";
-        public const string ModVersion = "0.7.2";
+        public const string ModVersion = "0.7.3";
 
         public static ConfigEntry<bool> Enabled;
 

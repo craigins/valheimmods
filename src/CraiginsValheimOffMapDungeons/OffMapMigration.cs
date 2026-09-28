@@ -26,6 +26,7 @@ namespace CraiginsValheimMod.OffMap
     /// NOT TESTED IN-GAME.
     /// </summary>
     [HarmonyPatch(typeof(ZNet), nameof(ZNet.ServerLoadWorld))]
+    [HarmonyAfter("com.craigins.valheimmod")] // its DungeonRerollCleanup must see the dungeons where they were generated
     internal static class OffMapMigration
     {
         private static void Postfix()

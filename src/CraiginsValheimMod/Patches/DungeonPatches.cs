@@ -38,8 +38,16 @@ namespace CraiginsValheimMod.Patches
     /// destroys children of the generator's transform, i.e. the room shells; a room's actual
     /// contents are instantiated unparented and survive it. Generate never notices because it
     /// only ever runs on a dungeon that doesn't exist yet, but a reroll does, so each discarded
-    /// attempt has to have its contents destroyed explicitly (DiscardAttemptContents below) or
-    /// they accumulate in the interior underneath the layout that finally wins.
+    /// attempt has to have its contents destroyed explicitly (DiscardAttempt below) or they
+    /// accumulate in the interior underneath the layout that finally wins.
+    ///
+    /// That includes Ghost mode, which is how 'pregenerateworld' and a dedicated server's zone
+    /// generation build every dungeon. Up to 0.7.2 the discard was skipped there on the belief
+    /// that Ghost mode creates no ZDOs. It does: ZNetView.Awake creates the ZDO first and only
+    /// then checks the ghost flag; the GameObject is what gets thrown away. So every rerolled
+    /// dungeon generated that way kept all of its discarded attempts - a Mörkhalla, which never
+    /// reaches 20 rooms and so runs all 8 rerolls, came out with about half of its 58,000 objects
+    /// stacked on top of each other. DungeonRerollCleanup removes them from existing worlds.
     ///
     /// Only Algorithm.Dungeon is touched. The CampGrid/CampRadial algorithms (Fuling villages and
     /// friends) don't go through PlaceRooms and don't use m_minRooms/m_maxRooms at all.
@@ -81,6 +89,35 @@ namespace CraiginsValheimMod.Patches
         }
 
         /// <summary>
+        /// Every ZDO created while a dungeon is being generated, so a discarded attempt can be
+        /// destroyed exactly - nothing that was already in the interior (a location's own
+        /// objects, player builds, or the real dungeon when DungeonRerollCleanup replays one
+        /// beside it) is ever touched. ZNetView.Awake is the only place generation creates ZDOs,
+        /// and it always goes through this overload.
+        /// </summary>
+        internal static class GenerationTracker
+        {
+            /// <summary>The attempt being built, or null when no dungeon is generating.</summary>
+            internal static List<ZDO> Attempt;
+
+            /// <summary>Everything created, across all attempts. Set only by DungeonRerollCleanup.</summary>
+            internal static List<ZDO> Recorder;
+
+            /// <summary>Told about each discarded attempt before it's destroyed. Set only by DungeonRerollCleanup.</summary>
+            internal static System.Action<List<ZDO>> OnDiscard;
+        }
+
+        [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.CreateNewZDO), new[] { typeof(Vector3), typeof(int) })]
+        private static class ZDOManCreateNewZDO_Patch
+        {
+            private static void Postfix(ZDO __result)
+            {
+                GenerationTracker.Attempt?.Add(__result);
+                GenerationTracker.Recorder?.Add(__result);
+            }
+        }
+
+        /// <summary>
         /// If the finished layout is still short, reroll it. Runs before Generate's Save(), so
         /// whichever attempt wins is the one written to the world.
         /// </summary>
@@ -90,10 +127,35 @@ namespace CraiginsValheimMod.Patches
             /// <summary>Regenerate() calls back into the patched method - don't recurse.</summary>
             private static bool _rerolling;
 
+            private static void Prefix(DungeonGenerator __instance)
+            {
+                if (_rerolling || Plugin.MinDungeonRooms.Value <= 0 || __instance.m_algorithm != DungeonGenerator.Algorithm.Dungeon)
+                {
+                    return;
+                }
+                GenerationTracker.Attempt = new List<ZDO>();
+            }
+
             private static void Postfix(DungeonGenerator __instance, ZoneSystem.SpawnMode mode)
             {
+                if (_rerolling)
+                {
+                    return;
+                }
+                try
+                {
+                    Reroll(__instance, mode);
+                }
+                finally
+                {
+                    GenerationTracker.Attempt = null;
+                }
+            }
+
+            private static void Reroll(DungeonGenerator __instance, ZoneSystem.SpawnMode mode)
+            {
                 int min = Plugin.MinDungeonRooms.Value;
-                if (min <= 0 || _rerolling)
+                if (min <= 0 || GenerationTracker.Attempt == null)
                 {
                     return;
                 }
@@ -159,7 +221,7 @@ namespace CraiginsValheimMod.Patches
             /// </summary>
             private static void Regenerate(DungeonGenerator dungeon, int seed, ZoneSystem.SpawnMode mode)
             {
-                DiscardAttemptContents(dungeon, mode);
+                DiscardAttempt();
                 dungeon.Clear();
                 DungeonGenerator.m_placedRooms.Clear();
                 DungeonGenerator.m_openConnections.Clear();
@@ -169,51 +231,26 @@ namespace CraiginsValheimMod.Patches
             }
 
             /// <summary>
-            /// Destroys the networked contents of the attempt we're about to throw away.
-            ///
-            /// Clear() alone isn't enough, and this is the whole reason the method exists.
+            /// Destroys every ZDO the attempt we're about to throw away created, in any spawn
+            /// mode. Clear() alone isn't enough, and this is the whole reason the method exists:
             /// Clear() destroys children of the generator's transform, which is only the room
             /// shells; PlaceRoom instantiates each room's ZNetView objects - chests, spawners,
-            /// torches - UNPARENTED, and PlaceDoors does the same with doors. Without this,
-            /// every discarded layout would leave its full contents floating in the interior and
-            /// the winning layout would be built on top of all of them.
+            /// torches - UNPARENTED, and PlaceDoors does the same with doors.
             ///
-            /// Skipped in Ghost mode, where there is by construction nothing to clean up:
-            /// ZoneSystem.SpawnLocation wraps the whole Generate call in StartGhostInit /
-            /// FinishGhostInit so no ZDOs are created at all, and PlaceRoom destroys each clone
-            /// on the spot. That's the mode 'pregenerateworld' uses, so the common path pays
-            /// nothing for this.
-            ///
-            /// Player-built pieces are preserved, which only matters when this runs underneath
-            /// 'resetdungeon' on a dungeon somebody has built in - that command promises to keep
-            /// them, and a reroll must not quietly break the promise.
-            ///
-            /// The IsServer check is belt-and-braces: GenerateRooms is only ever reached in Full
-            /// or Ghost mode, both of which are server-side (a client rebuilds a dungeon from
-            /// saved room data in DungeonGenerator.Load, never by generating it). Destroying
-            /// world ZDOs is a server operation regardless, so assert it rather than assume it.
+            /// In Full mode the objects are live and DungeonInterior.Destroy takes the scene path.
+            /// In Ghost mode the GameObjects are already gone but their ZDOs are not, so it takes
+            /// the ZDO path. Generation only ever runs on the server.
             /// </summary>
-            private static void DiscardAttemptContents(DungeonGenerator dungeon, ZoneSystem.SpawnMode mode)
+            private static void DiscardAttempt()
             {
-                if (mode == ZoneSystem.SpawnMode.Ghost || ZNetScene.instance == null || ZDOMan.instance == null)
+                List<ZDO> attempt = GenerationTracker.Attempt;
+                if (attempt.Count > 0)
                 {
-                    return;
+                    GenerationTracker.OnDiscard?.Invoke(attempt);
+                    DungeonInterior.Destroy(attempt);
                 }
-                if (ZNet.instance == null || !ZNet.instance.IsServer())
-                {
-                    return;
-                }
-
-                DungeonInterior.Collect(dungeon, preservePlayerBuilt: true, _discarded, out int _);
-                if (_discarded.Count > 0)
-                {
-                    DungeonInterior.Destroy(_discarded);
-                }
-                _discarded.Clear();
+                GenerationTracker.Attempt = new List<ZDO>();
             }
-
-            /// <summary>Reused across attempts - a reroll can run this up to MaxDungeonRerolls times per dungeon.</summary>
-            private static readonly List<ZDO> _discarded = new List<ZDO>();
         }
     }
 }
