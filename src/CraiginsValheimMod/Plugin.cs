@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.4";
+        public const string ModVersion = "0.7.5";
 
         public static Plugin Instance { get; private set; }
 
@@ -46,6 +46,13 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> IvyIgnoresAdjacency;
         public static ConfigEntry<float> RestingHealthRegenMultiplier;
         public static ConfigEntry<float> TamingSpeedMultiplier;
+        public static ConfigEntry<float> BerryBushRespawnMinutes;
+        public static ConfigEntry<bool> BerryBushesIndestructible;
+        public static ConfigEntry<bool> BoneBlackMetalAmmo;
+
+        public static ConfigEntry<bool> JotunWitchCooldownAfterCast;
+        public static ConfigEntry<float> JotunWitchSharedCooldown;
+        public static ConfigEntry<bool> JotunWitchDodgesShareCooldown;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -235,6 +242,61 @@ namespace CraiginsValheimMod
                     "this - normally the nearest player - so everyone near the pen needs the same value, " +
                     "and so does a dedicated server for a pen near the world centre.",
                     new AcceptableValueRange<float>(0.1f, 100f)));
+            BerryBushRespawnMinutes = Config.Bind(
+                "QualityOfLife", "BerryBushRespawnMinutes", 60f,
+                new ConfigDescription(
+                    "Minutes a picked berry bush takes to regrow - blueberry, raspberry, cloudberry " +
+                    "and the Deep North lingonberry. Vanilla is 300 for all of them. 0 keeps vanilla. " +
+                    "Counted in world time, which on a dedicated server only runs while someone is " +
+                    "connected, and sleeping moves it forward. Vineberry vines are not affected. " +
+                    "Whoever's game is running the bush applies this - normally the nearest player - so " +
+                    "everyone who picks berries needs the same value, and so does a dedicated server " +
+                    "for bushes near the world centre.",
+                    new AcceptableValueRange<float>(0f, 1000f)));
+            BerryBushesIndestructible = Config.Bind(
+                "QualityOfLife", "BerryBushesIndestructible", true,
+                "Berry bushes - blueberry, raspberry, cloudberry and the Deep North lingonberry - " +
+                "take no damage, so a stray swing, an area attack or a monster can't destroy one. " +
+                "In vanilla a bush has 30 health, and one that is destroyed never comes back, " +
+                "because the world only places bushes once. Picking is unaffected. Whoever's game " +
+                "is running the bush applies this - normally the nearest player - so everyone near " +
+                "the bushes needs it, and so does a dedicated server for bushes near the world centre.");
+            BoneBlackMetalAmmo = Config.Bind(
+                "QualityOfLife", "BoneBlackMetalAmmo", true,
+                "Adds a second recipe for black metal bolts and one for black metal missiles that " +
+                "each take 1 core wood and 5 bone fragments instead of black metal. They make the " +
+                "same item in the same amount (20) at the same station as the vanilla recipe - the " +
+                "black forge (level 2) for bolts, the artisan table for missiles - and appear beside " +
+                "it in the crafting list. They unlock once you have core wood, bone fragments and " +
+                "the station. Only the player crafting needs this. Read when the world loads, so " +
+                "a change needs you to rejoin.");
+
+            JotunWitchCooldownAfterCast = Config.Bind(
+                "Creatures", "JotunWitchCooldownAfterCast", true,
+                "The Hexe (Deep North witch) starts each attack's cooldown when its animation ends " +
+                "instead of when it starts. In vanilla her magic blast has a 3 second cooldown but " +
+                "takes about 3.1 seconds to cast, so it is ready again the moment a cast finishes " +
+                "and she can fire it back to back while standing still. With this on she has to " +
+                "wait the full 3 seconds after a cast before repeating it, and the same applies to " +
+                "her lightning bolt and dodges. She can still switch straight to a different " +
+                "attack. Whoever's game is running the witch applies this - normally the nearest " +
+                "player - so everyone fighting her needs it, and so does a dedicated server for " +
+                "witches near the world centre.");
+
+            JotunWitchSharedCooldown = Config.Bind(
+                "Creatures", "JotunWitchSharedCooldown", 1.5f,
+                new ConfigDescription(
+                    "Seconds the Hexe waits after finishing any attack before starting another, " +
+                    "whichever attack it is. Dodges count as attacks. 0 is vanilla, where she goes " +
+                    "straight from one attack into the next. Bears use 1.5 and Fader 0.5. Applies " +
+                    "on the same game as JotunWitchCooldownAfterCast.",
+                    new AcceptableValueRange<float>(0f, 10f)));
+            JotunWitchDodgesShareCooldown = Config.Bind(
+                "Creatures", "JotunWitchDodgesShareCooldown", true,
+                "The Hexe's four dodges (left, right, up and down) share one cooldown. In vanilla " +
+                "each direction has its own 6 second cooldown, so there is almost always one ready " +
+                "and she dodges between nearly every spell. With this on, one dodge puts all four " +
+                "on cooldown. Applies on the same game as JotunWitchCooldownAfterCast.");
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,
@@ -296,6 +358,8 @@ namespace CraiginsValheimMod
 
             CommandManager.Instance.AddConsoleCommand(new PregenerateWorldCommand());
             CommandManager.Instance.AddConsoleCommand(new ResetDungeonCommand());
+
+            Patches.BoneAmmoRecipes.Register();
 
             _harmony.PatchAll();
             Logger.LogInfo($"{ModName} v{ModVersion} loaded");

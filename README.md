@@ -153,6 +153,19 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       instead of its own, so a `ZNetScene.Awake` postfix repoints it. Applied by whoever's game
       runs the vine, so everyone near the vines needs it. See **Vines** in
       `docs/GAME_CONSTANTS.md`.
+    - `BerryBushPatches.cs` - `BerryBushRespawnMinutes` (default 60). Not a port - new. Every
+      berry bush (blueberry, raspberry, cloudberry, Deep North lingonberry) ships a 300 minute
+      `m_respawnTimeMinutes`. A `Pickable.Awake` prefix sets it on bushes that give one of those
+      berries, before Awake reads it. The picked time in the ZDO is vanilla's, so nothing is
+      written to the world. Vines are not affected. `BerryBushesIndestructible` (default on) drops
+      every hit on those bushes in a `Destructible.RPC_Damage` prefix - they have 30 health, and
+      the world never replaces a destroyed one. Applied by whoever's game runs the bush.
+    - `BoneAmmoRecipes.cs` - `BoneBlackMetalAmmo` (default on). New. Adds a second recipe for
+      black metal bolts (`BoltBlackmetal`) and black metal missiles (`TurretBolt`) costing 1 core
+      wood and 5 bone fragments. Not a Harmony patch: on Jotunn's `OnItemsRegistered` it copies the
+      vanilla recipe (black forge level 2 and artisan table, 20 each) and swaps the ingredients,
+      so station and output follow the game. Known recipes are tracked per item, so either recipe
+      unlocks both, and these unlock without black metal. Only the crafting player needs it.
     - `SmelterPatches.cs` - `BlastFurnaceSmeltsAll`. New. The blast furnace also smelts
       everything the regular smelter does. Everything that decides what a `Smelter` accepts, and
       what it makes, reads its `m_conversion` list. So a `ZNetScene.Awake` postfix copies the

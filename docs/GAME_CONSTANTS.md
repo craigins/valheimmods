@@ -466,3 +466,20 @@ height never triggers it. Ownership is only handed over for persistent ZDOs
 A reload cannot be queued while `Player.m_blockReload` is above zero (set to
 `m_blockReloadTime` on each shot) or while `Player.m_grappling` is, which a live grappling
 point resets to 0.2 every frame. `GrapplingHookNoReload` skips the reload altogether.
+
+## Berry bushes (Pickable, game 1.0.16)
+
+Bundle `c4210710`, extracted 2026-09-30. All four bushes are identical apart from the berry:
+
+| Prefab | Item | `m_amount` | `m_respawnTimeMinutes` | `m_respawnTimeInitMin` / `Max` | `m_defaultPicked` |
+|---|---|---|---|---|---|
+| BlueberryBush | Blueberries | 1 | 300 | 0 / 0 | false |
+| RaspberryBush | Raspberry | 1 | 300 | 0 / 0 | false |
+| CloudberryBush | Cloudberry | 1 | 300 | 0 / 0 | false |
+| LingonberryBush (Deep North) | Lingonberry | 1 | 300 | 0 / 0 | false |
+
+No extra drops and no `m_spawnCheck` (only `Vine` sets one). `Pickable.UpdateRespawn` runs every
+60 s on the ZDO owner and regrows once more than `m_respawnTimeMinutes` of `ZNet` time has passed
+since the stored picked time. On a dedicated server that time only advances while a player is
+connected; sleeping skips it forward. For comparison: mushrooms, thistle, dandelion, flint,
+branches 240; fiddlehead 300; vines 200; Dragon egg 480.
