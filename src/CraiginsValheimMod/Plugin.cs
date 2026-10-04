@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.6";
+        public const string ModVersion = "0.7.7";
 
         public static Plugin Instance { get; private set; }
 
@@ -41,10 +41,14 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> GrapplingHookNoReload;
         public static ConfigEntry<bool> GrapplingHookNoGravity;
         public static ConfigEntry<bool> GrapplingHookNoRangeLimit;
+        public static ConfigEntry<bool> GrapplingHookFullPull;
         public static ConfigEntry<bool> BlastFurnaceSmeltsAll;
         public static ConfigEntry<bool> VineberryIgnoresAdjacency;
         public static ConfigEntry<bool> IvyIgnoresAdjacency;
         public static ConfigEntry<float> RestingHealthRegenMultiplier;
+        public static ConfigEntry<bool> NoSwimStaminaDrain;
+        public static ConfigEntry<bool> SwimStaminaRegen;
+        public static ConfigEntry<bool> InstantMaxSkills;
         public static ConfigEntry<float> TamingSpeedMultiplier;
         public static ConfigEntry<float> BerryBushRespawnMinutes;
         public static ConfigEntry<bool> BerryBushesIndestructible;
@@ -199,6 +203,15 @@ namespace CraiginsValheimMod
                 "flies at its usual speed, so a long shot takes a few seconds to land. A hook " +
                 "that hits nothing is removed after 60 seconds. Affects only your own shots; the " +
                 "server does not need it.");
+            GrapplingHookFullPull = Config.Bind(
+                "QualityOfLife", "GrapplingHookFullPull", true,
+                "The grappling hook pulls you all the way to where it hit. In vanilla the pull often " +
+                "stops part way and leaves you hanging on the line until you jump, because it gives " +
+                "up once moments of not getting closer add up to half a second over the whole pull, " +
+                "and never resets that count, so a long pull - across a gap between islands, say - " +
+                "stops at about the same distance every time. With this on it only gives up after a full " +
+                "second of really being stuck, such as against a wall. Affects only your own hook; " +
+                "the server does not need it.");
             BlastFurnaceSmeltsAll = Config.Bind(
                 "QualityOfLife", "BlastFurnaceSmeltsAll", true,
                 "Lets the blast furnace smelt everything the regular smelter does (copper, tin, iron, " +
@@ -235,6 +248,23 @@ namespace CraiginsValheimMod
                     "regeneration comes from the food you have eaten, so you still need to eat. Affects " +
                     "only your own character.",
                     new AcceptableValueRange<float>(1f, 20f)));
+            NoSwimStaminaDrain = Config.Bind(
+                "QualityOfLife", "NoSwimStaminaDrain", true,
+                "Swimming uses no stamina. In vanilla it drains 5 stamina a second at swim skill 0, " +
+                "down to 2 at skill 100, and when you run out you start drowning. Your swim skill " +
+                "still goes up as you swim. Affects only your own character.");
+            SwimStaminaRegen = Config.Bind(
+                "QualityOfLife", "SwimStaminaRegen", true,
+                "Stamina refills while you swim, as it does on land. In vanilla it never refills in " +
+                "deep water, so even with NoSwimStaminaDrain on, jumping in with an empty bar would " +
+                "still drown you. Food and the Rested buff speed it up as normal. Affects only your " +
+                "own character.");
+            InstantMaxSkills = Config.Bind(
+                "QualityOfLife", "InstantMaxSkills", true,
+                "The first time a skill goes up at all, it goes straight to level 100. In vanilla " +
+                "getting a skill from 1 to 100 takes about 20,300 skill points. Skills you have never " +
+                "used stay at 0 until you use them. Dying still takes levels away, and the next use " +
+                "puts them back to 100. Affects only your own character.");
             TamingSpeedMultiplier = Config.Bind(
                 "QualityOfLife", "TamingSpeedMultiplier", 3f,
                 new ConfigDescription(

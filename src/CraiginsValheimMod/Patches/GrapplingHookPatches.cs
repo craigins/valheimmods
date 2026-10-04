@@ -1,12 +1,14 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using UnityEngine;
 
 namespace CraiginsValheimMod.Patches
 {
     /// <summary>
-    /// Three changes to the grappling hook, each with its own setting: no reload, no gravity on
-    /// the hook in flight, and no limit on how far it reaches.
+    /// Four changes to the grappling hook, each with its own setting: no reload, no gravity on
+    /// the hook in flight, no limit on how far it reaches, and a pull that doesn't give up part
+    /// way (documented on <see cref="GrapplingPointUpdate_Patch"/>).
     ///
     /// NO RELOAD (`GrapplingHookNoReload`)
     ///
@@ -81,7 +83,7 @@ namespace CraiginsValheimMod.Patches
     /// The line is still broken by everything else that breaks it: blocking, attacking, putting
     /// the launcher away, or making no headway for `m_breakEarlyTime`.
     ///
-    /// ALL THREE
+    /// ALL OF THEM
     ///
     /// A grappling hook is recognised by what its projectile leaves behind - a prefab with a
     /// `GrapplingPoint` on it, via `Projectile.m_spawnOnHit` - not by item name, so crossbows and
@@ -182,6 +184,113 @@ namespace CraiginsValheimMod.Patches
                     // Once the hook lands the game replaces it with m_stayTTL, as it always has.
                     __instance.m_ttl = MissedHookLifetime;
                 }
+            }
+        }
+
+        /// <summary>Distance the player must close on the hook to count as progress, in metres.</summary>
+        private const float FullPullProgressStep = 0.2f;
+
+        /// <summary>How long a pull may go without progress before it gives up, in seconds.</summary>
+        private const float FullPullStallSeconds = 1f;
+
+        private class PullProgress
+        {
+            public float BestDistance = float.PositiveInfinity;
+            public float StalledSeconds;
+            // Vanilla's own count, kept only to log where vanilla would have stopped the pull.
+            public float VanillaBreakingTime;
+            public bool LoggedVanillaStop;
+            public bool LoggedStall;
+        }
+
+        private static readonly ConditionalWeakTable<GrapplingPoint, PullProgress> s_pullProgress =
+            new ConditionalWeakTable<GrapplingPoint, PullProgress>();
+
+        /// <summary>
+        /// FULL PULL (`GrapplingHookFullPull`)
+        ///
+        /// WHAT VANILLA DOES. The primary hook's point (`GrapplingPoint`, Method ConstantVelocity)
+        /// sets the player's velocity to 20 m/s towards it every frame in `Update`. It gives up
+        /// through `m_breakingTime`: every frame the distance to the point is not less than the
+        /// last frame's, it adds the frame time, and past `m_breakEarlyTime` (0.5 s) it calls
+        /// `Deactivate`. That doesn't let go - it switches the point into the secondary's
+        /// repelling mode, so the player hangs on the line until they jump. The timer is never
+        /// reset during the pull, so it is a budget for the whole pull rather than a limit on
+        /// being stuck: the first frame (m_lastDist starts at 0), pushing off the ground, and
+        /// every scrape along terrain or a ledge all spend from the same 0.5 s. A long pull has
+        /// more time to run it out, and with GrapplingHookNoRangeLimit pulls can be far longer
+        /// than vanilla's 60 m. (The player's Rigidbody is interpolated, so frames between
+        /// physics steps do still show movement and aren't the cause.)
+        ///
+        /// WHAT THIS DOES. A prefix on `Update`, for the local player's primary point while it is
+        /// pulling, keeps vanilla's timer pinned at -infinity, so it can never reach the limit,
+        /// and tracks progress itself: time only counts while the player hasn't got
+        /// <see cref="FullPullProgressStep"/> closer than their closest so far, and resets each
+        /// time they do. After <see cref="FullPullStallSeconds"/> of that - stuck on a wall or
+        /// ledge - it hands vanilla a full timer and the pull ends as it always has. Arriving
+        /// within `m_closeBreakDist` (1 m) of the point ends it as before.
+        /// </summary>
+        [HarmonyPatch(typeof(GrapplingPoint), "Update")]
+        private static class GrapplingPointUpdate_Patch
+        {
+            private static void Prefix(GrapplingPoint __instance)
+            {
+                if (!Plugin.GrapplingHookFullPull.Value || __instance.m_secondary
+                    || __instance.Method != GrapplingPoint.GrapplingMethod.ConstantVelocity)
+                {
+                    return;
+                }
+                Character character = __instance.m_character;
+                if (character == null || character != Player.m_localPlayer
+                    || __instance.m_nview == null || !__instance.m_nview.IsValid() || !__instance.m_nview.IsOwner())
+                {
+                    return;
+                }
+
+                PullProgress progress = s_pullProgress.GetOrCreateValue(__instance);
+                if (__instance.m_time == 0f)
+                {
+                    // A fresh pull: Activate, or Pull from the repelling mode. Both zero m_time,
+                    // which Update only starts counting after this prefix.
+                    progress.BestDistance = float.PositiveInfinity;
+                    progress.StalledSeconds = 0f;
+                    progress.VanillaBreakingTime = 0f;
+                    progress.LoggedVanillaStop = false;
+                    progress.LoggedStall = false;
+                }
+                float distance = Vector3.Distance(character.transform.position, __instance.transform.position);
+
+                // Same test vanilla makes, against the m_lastDist it is about to compare with.
+                if (distance >= __instance.m_lastDist)
+                {
+                    progress.VanillaBreakingTime += Time.deltaTime;
+                    if (progress.VanillaBreakingTime > __instance.m_breakEarlyTime && !progress.LoggedVanillaStop)
+                    {
+                        progress.LoggedVanillaStop = true;
+                        Jotunn.Logger.LogInfo(
+                            $"Grappling hook: vanilla would have stopped this pull here, {distance:0.0} m from the hook " +
+                            $"after {__instance.m_time:0.00} s. GrapplingHookFullPull is carrying on.");
+                    }
+                }
+                if (distance < progress.BestDistance - FullPullProgressStep)
+                {
+                    progress.BestDistance = distance;
+                    progress.StalledSeconds = 0f;
+                }
+                else
+                {
+                    progress.StalledSeconds += Time.deltaTime;
+                }
+
+                bool stalled = progress.StalledSeconds > FullPullStallSeconds;
+                if (stalled && !progress.LoggedStall)
+                {
+                    progress.LoggedStall = true;
+                    Jotunn.Logger.LogInfo(
+                        $"Grappling hook: no progress for {FullPullStallSeconds:0.0} s, {distance:0.0} m from the hook. " +
+                        "Ending the pull.");
+                }
+                __instance.m_breakingTime = stalled ? float.PositiveInfinity : float.NegativeInfinity;
             }
         }
 

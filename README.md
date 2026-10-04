@@ -82,6 +82,18 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       aspect is alive for `KallAspectWatchdogSeconds` (default 30). Which aspects are missing comes
       from deaths reported to the crystal by RPC, or, for a crystal stuck before the mod, from the
       health, assuming Fader's branch first. Everyone fighting Kall needs it.
+    - `SwimStaminaPatches.cs` - `NoSwimStaminaDrain` and `SwimStaminaRegen` (both default on).
+      New. `Player.OnSwimming` drains 5 stamina a second at swim skill 0, 2 at 100; a
+      prefix/postfix zeroes `m_swimStaminaDrainMinSkill`/`MaxSkill` for the call, so the armour
+      and status effect modifiers (fractions of that base) scale zero too, and the swim skill
+      still rises. Vanilla also stops stamina regenerating while swimming off the bottom
+      (`Player.UpdateStats`), so with no drain alone, jumping in empty would still drown you; an
+      `UpdateStats` postfix runs vanilla's own regeneration in just that case. Per-player.
+    - `InstantMaxSkillsPatches.cs` - `InstantMaxSkills` (default on). New. `Skills.Skill.Raise`
+      only ever adds one level per call and throws away leftover points, so a bigger gain
+      wouldn't do it; a prefix sets the level to 99 and fills `m_accumulator` past the 500.5
+      point requirement, and vanilla's `Raise` takes it to 100, so the level-up message and
+      `OnSkillLevelup` still fire. Unused skills stay at 0 until they first gain. Per-player.
     - `RestingPatches.cs` - `RestingHealthRegenMultiplier` (default 2). Not a port - new.
       Multiplies health regeneration while the player has the Resting effect (near a fire,
       sitting or sheltered, unnoticed), for healing up after a respawn. The carried Rested
@@ -124,8 +136,8 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       off, so in vanilla it flies through a tamed animal unless the thrower has PvP on, and
       this accepts tamed animals as targets either way. Both run on the thrower's machine, so
       only the thrower needs the mod. Wild creatures and players are hit as normal.
-    - `GrapplingHookPatches.cs` - `GrapplingHookNoReload`, `GrapplingHookNoGravity` and
-      `GrapplingHookNoRangeLimit`. Not a port - new. The grappling
+    - `GrapplingHookPatches.cs` - `GrapplingHookNoReload`, `GrapplingHookNoGravity`,
+      `GrapplingHookNoRangeLimit` and `GrapplingHookFullPull`. Not a port - new. The grappling
       hook's primary attack has `m_requiresReload` set, like a crossbow: firing unloads it, and
       `Player.UpdateWeaponLoading` queues a 2 second reload that cannot even start until the
       pull has ended (`m_grappling`) and 1.1 seconds have passed since the shot
@@ -149,6 +161,15 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       distance means 128 to 192 m out. The hook's speed and the pull speed are unchanged. A hook
       that hits nothing is removed after 60 seconds rather than never, so that one fired at the
       sky does not fly for ever. Both are client-side only.
+
+      `GrapplingHookFullPull` stops the pull giving up part way. The primary point pulls at a
+      constant 20 m/s and calls `Deactivate` - which leaves the player hanging on the line in
+      repelling mode until they jump - once `m_breakingTime` passes 0.5 s. That timer gains every
+      frame the distance didn't shrink and is never reset, so it is a budget for the whole pull
+      that brief stalls (the first frame, pushing off the ground, scraping terrain) use up, and
+      long pulls run it out. A prefix on `GrapplingPoint.Update` pins it at -infinity and keeps a
+      timer of its own that resets every 0.2 m of progress, ending the pull only after 1 second
+      of being stuck. Client-side only.
     - `VinePatches.cs` - `VineberryIgnoresAdjacency` and `IvyIgnoresAdjacency`. Not a port -
       new. Every segment of a vine grows berries. Vanilla's `Vine.CheckBerryBlocker` lets a
       segment fruit only if fewer than `m_maxBerriesWithinBlocker` other segments in a box around
