@@ -73,6 +73,15 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       through keep their progress. Feeding, calm and somebody-nearby are left vanilla, and the
       tamer mead's doubling stacks on top. Applied by whoever's game runs the animal, so
       everyone near the pen needs it.
+    - `KallWatchdogPatches.cs` - `KallAspectWatchdog` (default on). New. Kall Fimbulbringer's
+      second phase is an ice crystal (`FrozenKing_p2`, 7000 health, immune to everything) that
+      only takes damage from the 1000 point explosion each of the seven boss aspects leaves on
+      death. Each aspect is summoned once, by a projectile from the previous one's death, and a
+      lost link leaves the crystal stuck for good. A component on the crystal, run by its owner,
+      summons the missing aspect when the health hasn't changed, a player is within 100 m and no
+      aspect is alive for `KallAspectWatchdogSeconds` (default 30). Which aspects are missing comes
+      from deaths reported to the crystal by RPC, or, for a crystal stuck before the mod, from the
+      health, assuming Fader's branch first. Everyone fighting Kall needs it.
     - `RestingPatches.cs` - `RestingHealthRegenMultiplier` (default 2). Not a port - new.
       Multiplies health regeneration while the player has the Resting effect (near a fire,
       sitting or sheltered, unnoticed), for healing up after a respawn. The carried Rested

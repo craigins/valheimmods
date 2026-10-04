@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.5";
+        public const string ModVersion = "0.7.6";
 
         public static Plugin Instance { get; private set; }
 
@@ -53,6 +53,8 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> JotunWitchCooldownAfterCast;
         public static ConfigEntry<float> JotunWitchSharedCooldown;
         public static ConfigEntry<bool> JotunWitchDodgesShareCooldown;
+        public static ConfigEntry<bool> KallAspectWatchdog;
+        public static ConfigEntry<float> KallAspectWatchdogSeconds;
 
         public static ConfigEntry<int> MinDungeonRooms;
         public static ConfigEntry<int> MaxDungeonRerolls;
@@ -297,6 +299,26 @@ namespace CraiginsValheimMod
                 "each direction has its own 6 second cooldown, so there is almost always one ready " +
                 "and she dodges between nearly every spell. With this on, one dodge puts all four " +
                 "on cooldown. Applies on the same game as JotunWitchCooldownAfterCast.");
+
+            KallAspectWatchdog = Config.Bind(
+                "Creatures", "KallAspectWatchdog", true,
+                "Keeps Kall Fimbulbringer's second phase from getting stuck. In that phase he sits " +
+                "in an ice crystal that only breaks once all seven boss aspects have died, and each " +
+                "aspect is summoned by the death of the one before. The game summons each one only " +
+                "once and can lose one (Fader has been seen not to appear), which leaves the crystal " +
+                "unbreakable for good. With this on, if the crystal's health hasn't changed, a player " +
+                "is within 100 m and no aspect is alive for KallAspectWatchdogSeconds, the missing " +
+                "aspect is summoned next to the crystal and has to be killed as normal. It also " +
+                "fixes a crystal that got stuck before the mod was installed, once a player is near " +
+                "it. Whoever's game runs the crystal does this - normally the nearest player - so " +
+                "everyone fighting Kall needs it.");
+            KallAspectWatchdogSeconds = Config.Bind(
+                "Creatures", "KallAspectWatchdogSeconds", 30f,
+                new ConfigDescription(
+                    "How long Kall's second phase must sit with no aspect alive before " +
+                    "KallAspectWatchdog summons the missing one. Keep it above 23 seconds: vanilla " +
+                    "takes up to that long between one aspect dying and the next appearing.",
+                    new AcceptableValueRange<float>(10f, 300f)));
 
             MinDungeonRooms = Config.Bind(
                 "Dungeons", "MinDungeonRooms", 0,
