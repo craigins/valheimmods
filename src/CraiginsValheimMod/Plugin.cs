@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.7";
+        public const string ModVersion = "0.7.8";
 
         public static Plugin Instance { get; private set; }
 
@@ -49,6 +49,9 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> NoSwimStaminaDrain;
         public static ConfigEntry<bool> SwimStaminaRegen;
         public static ConfigEntry<bool> InstantMaxSkills;
+        public static ConfigEntry<float> FallDamageReductionAtMaxJump;
+        public static ConfigEntry<bool> ForgeOfPotentialAlwaysSucceeds;
+        public static ConfigEntry<bool> CrownOfValheimHeatImmunity;
         public static ConfigEntry<float> TamingSpeedMultiplier;
         public static ConfigEntry<float> BerryBushRespawnMinutes;
         public static ConfigEntry<bool> BerryBushesIndestructible;
@@ -265,6 +268,24 @@ namespace CraiginsValheimMod
                 "getting a skill from 1 to 100 takes about 20,300 skill points. Skills you have never " +
                 "used stay at 0 until you use them. Dying still takes levels away, and the next use " +
                 "puts them back to 100. Affects only your own character.");
+            FallDamageReductionAtMaxJump = Config.Bind(
+                "QualityOfLife", "FallDamageReductionAtMaxJump", 1f,
+                new ConfigDescription(
+                    "How much fall damage your jump skill takes away at level 100, scaling evenly " +
+                    "with the skill. 1 means none at 100 and half at 50; 0.5 means half at 100; 0 is " +
+                    "vanilla. In vanilla falls over 4 m hurt, up to 100 damage at 20 m and more. Applied " +
+                    "after the feather cape and other effects. Affects only your own character.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            ForgeOfPotentialAlwaysSucceeds = Config.Bind(
+                "QualityOfLife", "ForgeOfPotentialAlwaysSucceeds", true,
+                "Upgrading an item at the Forge of Potential always succeeds. In vanilla each upgrade " +
+                "can instead lose a level or destroy the item (giving back some of the materials). It " +
+                "still costs the usual materials. Affects only your own crafting.");
+            CrownOfValheimHeatImmunity = Config.Bind(
+                "QualityOfLife", "CrownOfValheimHeatImmunity", true,
+                "While you wear the Crown of Valheim, Ashlands heat doesn't hurt you: standing in lava, " +
+                "being in the hot Ashlands sea, or running about in the Ashlands sun. Fire from attacks " +
+                "and other sources still does. Affects only your own character.");
             TamingSpeedMultiplier = Config.Bind(
                 "QualityOfLife", "TamingSpeedMultiplier", 3f,
                 new ConfigDescription(

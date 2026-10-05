@@ -27,7 +27,7 @@ namespace CraiginsValheimMod.Stargate
     {
         public const string ModGuid = "com.craigins.valheimstargate";
         public const string ModName = "Craigins Valheim Stargate";
-        public const string ModVersion = "0.7.7";
+        public const string ModVersion = "0.7.8";
 
         public static ConfigEntry<bool> AllowAllItems;
         public static ConfigEntry<bool> SignDial;

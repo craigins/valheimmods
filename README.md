@@ -94,6 +94,22 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       wouldn't do it; a prefix sets the level to 99 and fills `m_accumulator` past the 500.5
       point requirement, and vanilla's `Raise` takes it to 100, so the level-up message and
       `OnSkillLevelup` still fire. Unused skills stay at 0 until they first gain. Per-player.
+    - `FallDamagePatches.cs` - `FallDamageReductionAtMaxJump` (default 1). New. Vanilla fall
+      damage (`Character.UpdateGroundContact`, players only) is `Clamp01((drop - 4) / 16) * 100`,
+      then `SEMan.ModifyFallDamage` for the feather cape and the like; a postfix on that scales
+      the result by `1 - jump skill factor * setting`, so at 1 a jump skill of 50 halves it and
+      100 removes it. Per-player.
+    - `ForgeOfPotentialPatches.cs` - `ForgeOfPotentialAlwaysSucceeds` (default on). New. The
+      forge is a `CraftingStation` with `m_upgrader`; `InventoryGui.DoCrafting` rolls
+      `r = Random.Range(0, 1)` against the upgrader resource's shared `m_upgradeChance` (success)
+      and then `m_breakChance >= 1 - r` (destroyed, `m_breakReturnIngreientsAmount` of the materials back), otherwise a level
+      down. A prefix sets those to 1 and 0 for the one call and a finalizer restores them, so
+      every upgrade succeeds. Per-player.
+    - `CrownHeatPatches.cs` - `CrownOfValheimHeatImmunity` (default on). New. Lava, the
+      Ashlands sea and Ashlands daytime heat all build `m_lavaHeatLevel` /
+      `m_ashlandsOceanHeatLevel`, and `Character.UpdateHeatDamage` turns those into damage. A
+      prefix, for a player wearing `HelmetCrownofValheim`, zeroes both and skips it, so the heat
+      can't bank up and land when the crown comes off. Other fire damage is untouched. Per-player.
     - `RestingPatches.cs` - `RestingHealthRegenMultiplier` (default 2). Not a port - new.
       Multiplies health regeneration while the player has the Resting effect (near a fire,
       sitting or sheltered, unnoticed), for healing up after a respawn. The carried Rested
