@@ -109,7 +109,11 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       `HaveRequirementItems`/`ConsumeResources` only count `m_upgraderResource` entries, the
       idols, so a `Piece.Requirement.GetAmount` postfix returning 0 for those makes refining
       free. There is no forge level cap to lift (the forge is exempt from `m_maxQuality`), so
-      levels are unlimited. Per-player.
+      levels are unlimited. `ForgeOfPotentialUpgradeToLevel` (default 32767, 0 = vanilla):
+      a `DoCrafting` prefix records the refined prefab and old level + 1, and an
+      `Inventory.AddItem` prefix lifts exactly that call's quality to the setting, capped at
+      32767 because `ItemData.Save` writes quality as a ushort and `HitData.m_itemLevel` is a
+      short. The fail path (level - 1) and break refunds are untouched. Per-player.
     - `CrownHeatPatches.cs` - `CrownOfValheimHeatImmunity` (default on). New. Lava, the
       Ashlands sea and Ashlands daytime heat all build `m_lavaHeatLevel` /
       `m_ashlandsOceanHeatLevel`, and `Character.UpdateHeatDamage` turns those into damage. A

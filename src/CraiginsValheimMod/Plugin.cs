@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.10";
+        public const string ModVersion = "0.7.11";
 
         public static Plugin Instance { get; private set; }
 
@@ -52,6 +52,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<float> FallDamageReductionAtMaxJump;
         public static ConfigEntry<bool> ForgeOfPotentialAlwaysSucceeds;
         public static ConfigEntry<bool> ForgeOfPotentialNoIdols;
+        public static ConfigEntry<int> ForgeOfPotentialUpgradeToLevel;
         public static ConfigEntry<bool> CrownOfValheimHeatImmunity;
         public static ConfigEntry<float> TamingSpeedMultiplier;
         public static ConfigEntry<float> BerryBushRespawnMinutes;
@@ -288,6 +289,15 @@ namespace CraiginsValheimMod
                 "the forge's only cost, so refining becomes free. The forge has no level cap in " +
                 "vanilla - the rising idol cost was the only limit - so with this on, an item can be " +
                 "refined as high as you like. Affects only your own crafting.");
+            ForgeOfPotentialUpgradeToLevel = Config.Bind(
+                "QualityOfLife", "ForgeOfPotentialUpgradeToLevel", 32767,
+                new ConfigDescription(
+                    "A successful refinement at the Forge of Potential takes the item straight to this " +
+                    "level instead of up by one. 0 is vanilla (one level at a time). Never goes past " +
+                    "32767, the highest level the game can save and use safely - above that the level " +
+                    "wraps around when saved. Items already at or above the setting still go up by one, " +
+                    "to at most 32767. Affects only your own crafting.",
+                    new AcceptableValueRange<int>(0, 32767)));
             CrownOfValheimHeatImmunity = Config.Bind(
                 "QualityOfLife", "CrownOfValheimHeatImmunity", true,
                 "While you wear the Crown of Valheim, Ashlands heat doesn't hurt you: standing in lava, " +

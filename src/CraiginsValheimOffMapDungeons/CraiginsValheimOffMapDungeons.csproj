@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>CraiginsValheimOffMapDungeons</AssemblyName>
     <RootNamespace>CraiginsValheimMod.OffMap</RootNamespace>
-    <Version>0.7.10</Version>
+    <Version>0.7.11</Version>
     <Product>Craigins Valheim Off-Map Dungeons</Product>
     <Authors>craigins</Authors>
 

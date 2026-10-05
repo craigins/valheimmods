@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
+using UnityEngine;
 
 namespace CraiginsValheimMod.Patches
 {
@@ -32,6 +33,16 @@ namespace CraiginsValheimMod.Patches
     /// list all exempt an m_upgrader station from m_maxQuality and station level, so the rising
     /// idol cost was the only limit, and quality is sent as a ushort.
     ///
+    /// STRAIGHT TO A LEVEL. On success DoCrafting adds the refined item with
+    /// Inventory.AddItem(name, stack, quality = old level + 1, ..., position, ...). A second
+    /// DoCrafting prefix notes the recipe's prefab name and that expected level, and an AddItem
+    /// prefix raises the quality of exactly that call to ForgeOfPotentialUpgradeToLevel. The
+    /// failure path (old level - 1) and the materials handed back on a break are different calls
+    /// and are left alone. The result is capped at 32767, the most that survives everywhere: an
+    /// int in memory, but saved as a ushort (ItemData.Save, for inventories, chests and dropped
+    /// items) and sent with hits as a short (HitData.m_itemLevel). The centre-screen success
+    /// message is formatted before the item is added, so it still says the old level + 1.
+    ///
     /// Runs on the crafting player's own game, so it is per-player and the server doesn't need it.
     ///
     /// NOT TESTED IN-GAME.
@@ -57,6 +68,53 @@ namespace CraiginsValheimMod.Patches
             public ItemDrop.ItemData.SharedData Shared;
             public float Upgrade;
             public float Break;
+        }
+
+        // The highest level that survives being saved (ushort) and sent with a hit (short).
+        private const int MaxSafeLevel = short.MaxValue;
+
+        // Set only while DoCrafting runs at the forge: the refined item AddItem should raise.
+        private static string s_refinedPrefab;
+        private static int s_refinedQuality;
+
+        [HarmonyPatch(typeof(InventoryGui), "DoCrafting")]
+        private static class InventoryGui_DoCrafting_UpgradeToLevel_Patch
+        {
+            private static void Prefix(InventoryGui __instance, Player player)
+            {
+                s_refinedPrefab = null;
+                if (Plugin.ForgeOfPotentialUpgradeToLevel.Value <= 0 || __instance.m_craftRecipe == null
+                    || __instance.m_craftUpgradeItem == null)
+                {
+                    return;
+                }
+                CraftingStation station = player.GetCurrentCraftingStation();
+                if (station == null || !station.m_upgrader)
+                {
+                    return;
+                }
+                s_refinedPrefab = __instance.m_craftRecipe.m_item.gameObject.name;
+                s_refinedQuality = __instance.m_craftUpgradeItem.m_quality + 1;
+            }
+
+            private static void Finalizer()
+            {
+                s_refinedPrefab = null;
+            }
+        }
+
+        [HarmonyPatch(typeof(Inventory), nameof(Inventory.AddItem), typeof(string), typeof(int), typeof(int), typeof(int),
+            typeof(long), typeof(string), typeof(Vector2i), typeof(bool), typeof(bool), typeof(bool))]
+        private static class Inventory_AddItem_Patch
+        {
+            private static void Prefix(string name, ref int quality)
+            {
+                if (s_refinedPrefab == null || quality != s_refinedQuality || name != s_refinedPrefab)
+                {
+                    return;
+                }
+                quality = Mathf.Min(Mathf.Max(quality, Plugin.ForgeOfPotentialUpgradeToLevel.Value), MaxSafeLevel);
+            }
         }
 
         [HarmonyPatch(typeof(InventoryGui), "DoCrafting")]
