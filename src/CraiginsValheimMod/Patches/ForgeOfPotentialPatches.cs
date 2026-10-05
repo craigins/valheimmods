@@ -18,12 +18,38 @@ namespace CraiginsValheimMod.Patches
     /// returns more than 1, so every roll succeeds, with the usual success message and effects.
     /// Nothing else reads these fields.
     ///
+    /// NO IDOLS. At the forge, Player.HaveRequirementItems and ConsumeResources skip every
+    /// requirement whose m_upgraderResource doesn't match the station's m_upgrader, so a forge
+    /// refinement costs only the recipe's idol entries (Upgrader0-7 Weapon/Armor) and nothing
+    /// else. Their count comes from Piece.Requirement.GetAmount, which for an upgrader resource is
+    /// m_amount plus m_amountPerLevel scaled by the level. A postfix returns 0 for upgrader
+    /// resources, so the check passes with none in the bag, nothing is taken, and the requirement
+    /// list hides the line (it only shows entries with an amount above 0). Refining is then free.
+    /// DoCrafting still finds the idol entry in the recipe itself for its chances, which doesn't
+    /// need the item in your inventory.
+    ///
+    /// NO CAP. There is no level cap to lift: DoCrafting, RequiredCraftingStation and the recipe
+    /// list all exempt an m_upgrader station from m_maxQuality and station level, so the rising
+    /// idol cost was the only limit, and quality is sent as a ushort.
+    ///
     /// Runs on the crafting player's own game, so it is per-player and the server doesn't need it.
     ///
     /// NOT TESTED IN-GAME.
     /// </summary>
     internal static class ForgeOfPotentialPatches
     {
+        [HarmonyPatch(typeof(Piece.Requirement), nameof(Piece.Requirement.GetAmount))]
+        private static class Requirement_GetAmount_Patch
+        {
+            private static void Postfix(Piece.Requirement __instance, ref int __result)
+            {
+                if (__instance.m_upgraderResource && Plugin.ForgeOfPotentialNoIdols.Value)
+                {
+                    __result = 0;
+                }
+            }
+        }
+
         // A class, not a tuple: the game's runtime has no System.ValueTuple, and a tuple in a
         // patch signature makes Harmony's PatchAll throw, which stops every patch in the mod.
         private sealed class SavedChances

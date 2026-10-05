@@ -103,8 +103,13 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       forge is a `CraftingStation` with `m_upgrader`; `InventoryGui.DoCrafting` rolls
       `r = Random.Range(0, 1)` against the upgrader resource's shared `m_upgradeChance` (success)
       and then `m_breakChance >= 1 - r` (destroyed, `m_breakReturnIngreientsAmount` of the materials back), otherwise a level
-      down. A prefix sets those to 1 and 0 for the one call and a finalizer restores them, so
-      every upgrade succeeds. Per-player.
+      down. Every idol ships 0.65 / 1.0 / 0.35, so a failed roll always destroys the item. A
+      prefix sets those to 1 and 0 for the one call and a finalizer restores them, so
+      every upgrade succeeds. `ForgeOfPotentialNoIdols` (default on): at an `m_upgrader` station
+      `HaveRequirementItems`/`ConsumeResources` only count `m_upgraderResource` entries, the
+      idols, so a `Piece.Requirement.GetAmount` postfix returning 0 for those makes refining
+      free. There is no forge level cap to lift (the forge is exempt from `m_maxQuality`), so
+      levels are unlimited. Per-player.
     - `CrownHeatPatches.cs` - `CrownOfValheimHeatImmunity` (default on). New. Lava, the
       Ashlands sea and Ashlands daytime heat all build `m_lavaHeatLevel` /
       `m_ashlandsOceanHeatLevel`, and `Character.UpdateHeatDamage` turns those into damage. A

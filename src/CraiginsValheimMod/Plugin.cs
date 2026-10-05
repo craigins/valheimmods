@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.9";
+        public const string ModVersion = "0.7.10";
 
         public static Plugin Instance { get; private set; }
 
@@ -51,6 +51,7 @@ namespace CraiginsValheimMod
         public static ConfigEntry<bool> InstantMaxSkills;
         public static ConfigEntry<float> FallDamageReductionAtMaxJump;
         public static ConfigEntry<bool> ForgeOfPotentialAlwaysSucceeds;
+        public static ConfigEntry<bool> ForgeOfPotentialNoIdols;
         public static ConfigEntry<bool> CrownOfValheimHeatImmunity;
         public static ConfigEntry<float> TamingSpeedMultiplier;
         public static ConfigEntry<float> BerryBushRespawnMinutes;
@@ -279,8 +280,14 @@ namespace CraiginsValheimMod
             ForgeOfPotentialAlwaysSucceeds = Config.Bind(
                 "QualityOfLife", "ForgeOfPotentialAlwaysSucceeds", true,
                 "Upgrading an item at the Forge of Potential always succeeds. In vanilla each upgrade " +
-                "can instead lose a level or destroy the item (giving back some of the materials). It " +
-                "still costs the usual materials. Affects only your own crafting.");
+                "can instead destroy the item (giving back some of the materials). It still costs " +
+                "the idols, unless ForgeOfPotentialNoIdols is on. Affects only your own crafting.");
+            ForgeOfPotentialNoIdols = Config.Bind(
+                "QualityOfLife", "ForgeOfPotentialNoIdols", true,
+                "Refining at the Forge of Potential needs no Battle or Protection Idols. The idols are " +
+                "the forge's only cost, so refining becomes free. The forge has no level cap in " +
+                "vanilla - the rising idol cost was the only limit - so with this on, an item can be " +
+                "refined as high as you like. Affects only your own crafting.");
             CrownOfValheimHeatImmunity = Config.Bind(
                 "QualityOfLife", "CrownOfValheimHeatImmunity", true,
                 "While you wear the Crown of Valheim, Ashlands heat doesn't hurt you: standing in lava, " +
