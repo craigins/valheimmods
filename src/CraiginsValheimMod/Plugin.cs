@@ -13,7 +13,7 @@ namespace CraiginsValheimMod
     {
         public const string ModGuid = "com.craigins.valheimmod";
         public const string ModName = "Craigins Valheim Mod";
-        public const string ModVersion = "0.7.11";
+        public const string ModVersion = "0.7.12";
 
         public static Plugin Instance { get; private set; }
 
@@ -292,11 +292,11 @@ namespace CraiginsValheimMod
             ForgeOfPotentialUpgradeToLevel = Config.Bind(
                 "QualityOfLife", "ForgeOfPotentialUpgradeToLevel", 32767,
                 new ConfigDescription(
-                    "A successful refinement at the Forge of Potential takes the item straight to this " +
-                    "level instead of up by one. 0 is vanilla (one level at a time). Never goes past " +
+                    "A successful refinement at the Forge of Potential sets the item to exactly this " +
+                    "level instead of raising it by one - lower as well as higher, so refining an item " +
+                    "above this level brings it down to it. 0 is vanilla (one level at a time). At most " +
                     "32767, the highest level the game can save and use safely - above that the level " +
-                    "wraps around when saved. Items already at or above the setting still go up by one, " +
-                    "to at most 32767. Affects only your own crafting.",
+                    "wraps around when saved. Affects only your own crafting.",
                     new AcceptableValueRange<int>(0, 32767)));
             CrownOfValheimHeatImmunity = Config.Bind(
                 "QualityOfLife", "CrownOfValheimHeatImmunity", true,

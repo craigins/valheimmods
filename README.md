@@ -111,7 +111,7 @@ Jotunn; the base mod knows about none of them, so it runs fine alone.
       free. There is no forge level cap to lift (the forge is exempt from `m_maxQuality`), so
       levels are unlimited. `ForgeOfPotentialUpgradeToLevel` (default 32767, 0 = vanilla):
       a `DoCrafting` prefix records the refined prefab and old level + 1, and an
-      `Inventory.AddItem` prefix lifts exactly that call's quality to the setting, capped at
+      `Inventory.AddItem` prefix sets exactly that call's quality to the setting (lower or higher), capped at
       32767 because `ItemData.Save` writes quality as a ushort and `HitData.m_itemLevel` is a
       short. The fail path (level - 1) and break refunds are untouched. Per-player.
     - `CrownHeatPatches.cs` - `CrownOfValheimHeatImmunity` (default on). New. Lava, the

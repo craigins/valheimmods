@@ -36,7 +36,8 @@ namespace CraiginsValheimMod.Patches
     /// STRAIGHT TO A LEVEL. On success DoCrafting adds the refined item with
     /// Inventory.AddItem(name, stack, quality = old level + 1, ..., position, ...). A second
     /// DoCrafting prefix notes the recipe's prefab name and that expected level, and an AddItem
-    /// prefix raises the quality of exactly that call to ForgeOfPotentialUpgradeToLevel. The
+    /// prefix sets the quality of exactly that call to ForgeOfPotentialUpgradeToLevel - lower as
+    /// well as higher, so refining an item above the setting brings it down to it. The
     /// failure path (old level - 1) and the materials handed back on a break are different calls
     /// and are left alone. The result is capped at 32767, the most that survives everywhere: an
     /// int in memory, but saved as a ushort (ItemData.Save, for inventories, chests and dropped
@@ -113,7 +114,7 @@ namespace CraiginsValheimMod.Patches
                 {
                     return;
                 }
-                quality = Mathf.Min(Mathf.Max(quality, Plugin.ForgeOfPotentialUpgradeToLevel.Value), MaxSafeLevel);
+                quality = Mathf.Min(Plugin.ForgeOfPotentialUpgradeToLevel.Value, MaxSafeLevel);
             }
         }
 
