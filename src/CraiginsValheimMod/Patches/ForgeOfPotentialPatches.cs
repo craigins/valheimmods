@@ -24,11 +24,20 @@ namespace CraiginsValheimMod.Patches
     /// </summary>
     internal static class ForgeOfPotentialPatches
     {
+        // A class, not a tuple: the game's runtime has no System.ValueTuple, and a tuple in a
+        // patch signature makes Harmony's PatchAll throw, which stops every patch in the mod.
+        private sealed class SavedChances
+        {
+            public ItemDrop.ItemData.SharedData Shared;
+            public float Upgrade;
+            public float Break;
+        }
+
         [HarmonyPatch(typeof(InventoryGui), "DoCrafting")]
         private static class InventoryGui_DoCrafting_Patch
         {
             private static void Prefix(InventoryGui __instance, Player player,
-                out List<(ItemDrop.ItemData.SharedData shared, float upgrade, float breakChance)> __state)
+                out List<SavedChances> __state)
             {
                 __state = null;
                 if (!Plugin.ForgeOfPotentialAlwaysSucceeds.Value || __instance.m_craftRecipe == null)
@@ -47,14 +56,14 @@ namespace CraiginsValheimMod.Patches
                         continue;
                     }
                     ItemDrop.ItemData.SharedData shared = requirement.m_resItem.m_itemData.m_shared;
-                    __state ??= new List<(ItemDrop.ItemData.SharedData, float, float)>();
-                    __state.Add((shared, shared.m_upgradeChance, shared.m_breakChance));
+                    __state ??= new List<SavedChances>();
+                    __state.Add(new SavedChances { Shared = shared, Upgrade = shared.m_upgradeChance, Break = shared.m_breakChance });
                     shared.m_upgradeChance = 1f;
                     shared.m_breakChance = 0f;
                 }
             }
 
-            private static void Finalizer(List<(ItemDrop.ItemData.SharedData shared, float upgrade, float breakChance)> __state)
+            private static void Finalizer(List<SavedChances> __state)
             {
                 if (__state == null)
                 {
@@ -63,8 +72,8 @@ namespace CraiginsValheimMod.Patches
                 // Backwards, so an item listed twice ends on its original values.
                 for (int i = __state.Count - 1; i >= 0; i--)
                 {
-                    __state[i].shared.m_upgradeChance = __state[i].upgrade;
-                    __state[i].shared.m_breakChance = __state[i].breakChance;
+                    __state[i].Shared.m_upgradeChance = __state[i].Upgrade;
+                    __state[i].Shared.m_breakChance = __state[i].Break;
                 }
             }
         }
